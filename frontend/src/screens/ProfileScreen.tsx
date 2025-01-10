@@ -1,16 +1,21 @@
 import React, { useState, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, Alert, TouchableOpacity, Text } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../hooks/useAuth';
 import { profileService } from '../services/profileService';
 import { User, ProfileUpdateData } from '../types/profile.types';
+import { RootStackParamList } from '../types/navigation.types';
 import PlanModification from '../components/ProfileComponents/PlanModification';
 import ProfileHeader from '../components/ProfileComponents/ProfileHeader';
 import StatsSection from '../components/ProfileComponents/StatsSection';
 import NotificationSettings from '../components/ProfileComponents/NotificationSettings';
 import EditProfileForm from '../components/ProfileComponents/EditProfileForm';
 
+type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 const ProfileScreen: React.FC = () => {
+  const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { logout } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -96,6 +101,14 @@ const ProfileScreen: React.FC = () => {
     );
   };
 
+  const handleLogout = async () => {
+    await logout();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Login' }],
+    });
+  };
+
   if (!user || isLoading) {
     return <View style={styles.loadingContainer}><Text>Loading...</Text></View>;
   }
@@ -153,7 +166,7 @@ const ProfileScreen: React.FC = () => {
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
           style={styles.logoutButton}
-          onPress={logout}
+          onPress={handleLogout}
         >
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>

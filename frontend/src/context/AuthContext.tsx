@@ -99,10 +99,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Similar implementation for register and logout...
+  const logout = async () => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      
+      // Call backend logout endpoint
+      await authService.logout();
+      
+      // Clear local storage
+      await AsyncStorage.removeItem('userToken');
+      
+      // Reset auth service header
+      authService.setAuthHeader(null);
+      
+      // Reset auth state
+      dispatch({ type: 'LOGOUT' });
+      
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still logout on frontend even if backend fails
+      await AsyncStorage.removeItem('userToken');
+      authService.setAuthHeader(null);
+      dispatch({ type: 'LOGOUT' });
+    }
+  };
 
-  return (
-    <AuthContext.Provider value={{ ...state, login, register: async () => {}, logout: async () => {} }}>
-      {children}
-    </AuthContext.Provider>
-  );
+    return (
+      <AuthContext.Provider value={{ ...state, login, register: async () => {}, logout }}>
+        {children}
+      </AuthContext.Provider>
+    );
+  
 };
