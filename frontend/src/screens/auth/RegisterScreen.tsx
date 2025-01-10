@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Button, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, SafeAreaView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { RootStackParamList } from '../../types/navigation.types';
@@ -39,75 +39,81 @@ const RegisterScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1 }}
-    >
-      <ScrollView>
-        <View style={styles.container}>
-          <Text style={styles.title}>Register</Text>
-          
-          <Text style={styles.sectionTitle}>Account Information</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Name"
-            value={formData.name}
-            onChangeText={handleChange('name')}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={formData.email}
-            onChangeText={handleChange('email')}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={formData.password}
-            onChangeText={handleChange('password')}
-            secureTextEntry
-          />
+    <SafeAreaView style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView>
+          <View style={styles.container}>
+            <Text style={styles.title}>Register</Text>
+            
+            <Text style={styles.sectionTitle}>Account Information</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Name"
+              value={formData.name}
+              onChangeText={handleChange('name')}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={formData.email}
+              onChangeText={handleChange('email')}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              value={formData.password}
+              onChangeText={handleChange('password')}
+              secureTextEntry
+            />
 
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Age"
-            value={formData.age.toString()}
-            onChangeText={handleChange('age')}
-            keyboardType="numeric"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Height (cm)"
-            value={formData.height.toString()}
-            onChangeText={handleChange('height')}
-            keyboardType="numeric"
-          />
+            <Text style={styles.sectionTitle}>Personal Information</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your age"
+              placeholderTextColor="#999"
+              value={formData.age === 0 ? '' : formData.age.toString()}
+              onChangeText={handleChange('age')}
+              keyboardType="numeric"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your height in cm"
+              placeholderTextColor="#999"
+              value={formData.height === 0 ? '' : formData.height.toString()}
+              onChangeText={handleChange('height')}
+              keyboardType="numeric"
+            />
 
-          <Text style={styles.sectionTitle}>Weight Goals</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Current Weight (kg)"
-            value={formData.weight.toString()}
-            onChangeText={handleChange('weight')}
-            keyboardType="numeric"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Goal Weight (kg)"
-            value={formData.goalWeight.toString()}
-            onChangeText={handleChange('goalWeight')}
-            keyboardType="numeric"
-          />
+            <Text style={styles.sectionTitle}>Weight Goals</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your current weight in kg"
+              placeholderTextColor="#999"
+              value={formData.weight === 0 ? '' : formData.weight.toString()}
+              onChangeText={handleChange('weight')}
+              keyboardType="numeric"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your goal weight in kg"
+              placeholderTextColor="#999"
+              value={formData.goalWeight === 0 ? '' : formData.goalWeight.toString()}
+              onChangeText={handleChange('goalWeight')}
+              keyboardType="numeric"
+            />
 
-          {error && <Text style={styles.error}>{error}</Text>}
-          <Button title="Register" onPress={handleRegister} />
-          <Button title="Back to Login" onPress={() => navigation.navigate('Login')} />
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            {error && <Text style={styles.error}>{error}</Text>}
+            <Button title="Register" onPress={handleRegister} />
+            <Button title="Back to Login" onPress={() => navigation.navigate('Login')} />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
