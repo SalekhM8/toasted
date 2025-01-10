@@ -14,6 +14,7 @@ const paymentRoutes = require('./routes/paymentRoutes');
 
 // Initialize express app first
 const app = express();
+app.set('trust proxy', 1);
 
 // Load env vars
 dotenv.config();

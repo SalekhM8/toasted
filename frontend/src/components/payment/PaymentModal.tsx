@@ -43,7 +43,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch('http://192.168.1.174:5000/api/payments/create-payment-intent', {
+      const response = await fetch('https://toasted.onrender.com/api/payments/create-payment-intent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
