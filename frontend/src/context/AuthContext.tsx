@@ -98,7 +98,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Similar implementation for register and logout...
+  const register = async (registerData: any) => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      const response = await authService.register(registerData);
+      await AsyncStorage.setItem('userToken', response.accessToken);
+      authService.setAuthHeader(response.accessToken);
+      dispatch({
+        type: 'SET_USER',
+        payload: { user: response as unknown as User, token: response.accessToken },
+      });
+    } catch (error) {
+      dispatch({
+        type: 'SET_ERROR',
+        payload: 'Registration failed',
+      });
+      throw error;
+    }
+  };
+
   const logout = async () => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
@@ -124,10 +142,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-    return (
-      <AuthContext.Provider value={{ ...state, login, register: async () => {}, logout }}>
-        {children}
-      </AuthContext.Provider>
-    );
-  
+  return (
+    <AuthContext.Provider value={{ ...state, login, register, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
