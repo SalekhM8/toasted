@@ -38,7 +38,7 @@ export const planService = {
   async getTodaysPlan() {
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch(`${API_URL}/api/plans/today`, {
+      const response = await fetch(`${API_URL}/plans/today`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -58,7 +58,7 @@ export const planService = {
   async getWeekPlan() {
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch(`${API_URL}/api/plans/week`, {
+      const response = await fetch(`${API_URL}/plans/week`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -78,7 +78,7 @@ export const planService = {
   async completeWorkout(date: Date) {
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch(`${API_URL}/api/plans/complete/workout`, {
+      const response = await fetch(`${API_URL}/plans/complete/workout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -101,7 +101,7 @@ export const planService = {
   async completeMeal(date: Date, mealNumber: number) {
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch(`${API_URL}/api/plans/complete/meal`, {
+      const response = await fetch(`${API_URL}/plans/complete/meal`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -125,7 +125,7 @@ export const planService = {
   modifyPlan: async (data: { workoutPlanId?: string; dietPlanId?: string }) => {
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch(`${API_URL}/api/plans/select`, {
+      const response = await fetch(`${API_URL}/plans/select`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
