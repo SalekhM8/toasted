@@ -1,10 +1,10 @@
 import axios from 'axios';
 import { LoginCredentials, RegisterData, AuthResponse } from '../types/auth.types';
 
-const API_BASE_URL = 'http://192.168.1.174:5000/api';  // Keeping your IP address
+export const API_BASE_URL = 'https://toasted.onrender.com/api';
 
 export const api = axios.create({
-    baseURL: 'http://192.168.1.174:5000/api',
+    baseURL: 'https://toasted.onrender.com/api',
     headers: {
       'Content-Type': 'application/json',
     },

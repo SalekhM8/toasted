@@ -14,7 +14,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   return (
     <StripeProvider
-      publishableKey="pk_test_51Qdg5tDsna1PpUqNWd4NNDVOKxMicf2wqmaiFjH8UmvdiHGiFQGJJ2JIQKdb8MLoccqrUhvMERbSI5gJcQSHk91A00pyRL5vQk"
+      publishableKey="pk_live_51Qdg5tDsna1PpUqNMmG2yLXRrlOCrUVlfXPgFydH8z2x15aOfgH63xH0mx7HlTyp5BS7XJqRyhIOtw0Qdlx5F0ec00zF4pMsOk"
     >
       <AuthProvider>
         <NavigationContainer>

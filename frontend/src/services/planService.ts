@@ -8,7 +8,8 @@ interface PlanSelection {
   startDate: Date;
 }
 
-const API_URL = 'http://192.168.1.174:5000'; 
+   
+const API_URL = 'https://toasted.onrender.com/api';
 
 export const planService = {
   async selectPlans(data: PlanSelection) {
