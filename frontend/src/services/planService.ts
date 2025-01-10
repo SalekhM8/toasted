@@ -15,7 +15,7 @@ export const planService = {
   async selectPlans(data: PlanSelection) {
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch(`${API_URL}/api/plans/select`, {
+      const response = await fetch(`${API_URL}/plans/select`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
