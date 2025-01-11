@@ -40,8 +40,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Important: Stripe webhook route must come BEFORE express.json()
-a
+
 
 
 // Regular middleware
