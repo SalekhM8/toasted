@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import PlanDetailModal from '../plans/PlanDetailModal';
-import PaymentModal from '../payment/PaymentModal';
 import { planService } from '../../services/planService';
 import { StyleSheet } from 'react-native';
+
 interface PlanModificationProps {
     currentPlan: {
       workoutPlanId?: string;
@@ -11,14 +11,13 @@ interface PlanModificationProps {
     };
     onPlanUpdated: () => void;
     onClose: () => void;
-  }
+}
 
 const PlanModification: React.FC<PlanModificationProps> = ({ currentPlan, onPlanUpdated }) => {
   const [selectedPlanForModal, setSelectedPlanForModal] = useState<{
     plan: any;
     type: 'diet' | 'workout';
   } | null>(null);
-  const [showPayment, setShowPayment] = useState(false);
   const [selectedDietPlan, setSelectedDietPlan] = useState<string | null>(currentPlan.dietPlanId || null);
   const [selectedWorkoutPlan, setSelectedWorkoutPlan] = useState<string | null>(currentPlan.workoutPlanId || null);
   const [loading, setLoading] = useState(false);
@@ -39,39 +38,13 @@ const PlanModification: React.FC<PlanModificationProps> = ({ currentPlan, onPlan
     { id: "wp_4day_bw", name: "4-Day Bodyweight Mastery", frequency: "4day" }
   ];
 
-  const isUpgrade = () => {
-    const currentHasBoth = currentPlan.workoutPlanId && currentPlan.dietPlanId;
-    const selectedHasBoth = selectedWorkoutPlan && selectedDietPlan;
-    
-    if (currentHasBoth) return false;
-    return selectedHasBoth;
-  };
-
-  const getUpgradeAmount = () => {
-    if (!isUpgrade()) return 0;
-    return 2.99; // Flat upgrade fee
-  };
-
   const handlePlanSelect = async () => {
     try {
       setLoading(true);
-      
-      // Don't allow removing plans if user has bundle
-      const hasBothPlans = currentPlan.workoutPlanId && currentPlan.dietPlanId;
-      if (hasBothPlans && (!selectedWorkoutPlan || !selectedDietPlan)) {
-        Alert.alert('Error', 'Please email support for plan downgrades');
-        return;
-      }
 
       // Don't allow no plans selected
       if (!selectedWorkoutPlan && !selectedDietPlan) {
         Alert.alert('Error', 'You must select at least one plan');
-        return;
-      }
-
-      // Handle upgrade case
-      if (isUpgrade()) {
-        setShowPayment(true);
         return;
       }
 
@@ -89,22 +62,9 @@ const PlanModification: React.FC<PlanModificationProps> = ({ currentPlan, onPlan
     }
   };
 
-  const handlePaymentSuccess = async () => {
-    try {
-      await planService.modifyPlan({
-        workoutPlanId: selectedWorkoutPlan || undefined,
-        dietPlanId: selectedDietPlan || undefined
-      });
-      Alert.alert('Success', 'Plan upgraded successfully');
-      onPlanUpdated();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to complete upgrade');
-    }
-  };
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Modify Your Plan</Text>
+      <Text style={styles.title}>Modify Your Plan(s)</Text>
       
       <View style={styles.plansContainer}>
         <Text style={styles.sectionTitle}>Diet Plans</Text>
@@ -142,7 +102,7 @@ const PlanModification: React.FC<PlanModificationProps> = ({ currentPlan, onPlan
         disabled={loading}
       >
         <Text style={styles.updateButtonText}>
-          {loading ? 'Updating...' : 'Update Plan'}
+          {loading ? 'Updating...' : 'Update Plan(s)'}
         </Text>
       </TouchableOpacity>
 
@@ -151,22 +111,10 @@ const PlanModification: React.FC<PlanModificationProps> = ({ currentPlan, onPlan
           visible={!!selectedPlanForModal}
           onClose={() => setSelectedPlanForModal(null)}
           onSelect={() => {
-            const hasBothPlans = currentPlan.workoutPlanId && currentPlan.dietPlanId;
-            
-            if (hasBothPlans) {
-              // If they have bundle, only allow switching plans, not deselecting
-              if (selectedPlanForModal.type === 'diet') {
-                setSelectedDietPlan(selectedPlanForModal.plan.id);
-              } else {
-                setSelectedWorkoutPlan(selectedPlanForModal.plan.id);
-              }
+            if (selectedPlanForModal.type === 'diet') {
+              setSelectedDietPlan(selectedPlanForModal.plan.id);
             } else {
-              // Normal selection for single plan users
-              if (selectedPlanForModal.type === 'diet') {
-                setSelectedDietPlan(selectedPlanForModal.plan.id);
-              } else {
-                setSelectedWorkoutPlan(selectedPlanForModal.plan.id);
-              }
+              setSelectedWorkoutPlan(selectedPlanForModal.plan.id);
             }
             setSelectedPlanForModal(null);
           }}
@@ -179,21 +127,9 @@ const PlanModification: React.FC<PlanModificationProps> = ({ currentPlan, onPlan
           }
         />
       )}
-
-      <PaymentModal
-        visible={showPayment}
-        onClose={() => setShowPayment(false)}
-        onSuccess={handlePaymentSuccess}
-        planType="bundle"
-        amount={getUpgradeAmount()}
-        isUpgrade={true}
-      />
     </View>
   );
 };
-
-// [Previous styles remain unchanged]
-
 
 const styles = StyleSheet.create({
   container: {

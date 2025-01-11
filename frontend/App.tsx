@@ -13,10 +13,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
-    <StripeProvider
-      publishableKey="pk_live_51Qdg5tDsna1PpUqNMmG2yLXRrlOCrUVlfXPgFydH8z2x15aOfgH63xH0mx7HlTyp5BS7XJqRyhIOtw0Qdlx5F0ec00zF4pMsOk"
-    >
-      <AuthProvider>
+          <AuthProvider>
         <NavigationContainer>
           <Stack.Navigator
             initialRouteName="Login"
@@ -30,6 +27,6 @@ export default function App() {
           </Stack.Navigator>
         </NavigationContainer>
       </AuthProvider>
-    </StripeProvider>
+    
   );
 }

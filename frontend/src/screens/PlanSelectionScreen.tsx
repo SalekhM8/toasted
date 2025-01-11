@@ -4,7 +4,6 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation.types';
 import { planService } from '../services/planService';
-import PaymentModal from '../components/payment/PaymentModal';
 import PlanDetailModal from '../components/plans/PlanDetailModal';
 
 interface DietPlan {
@@ -25,7 +24,6 @@ const PlanSelectionScreen = () => {
   const navigation = useNavigation<PlanSelectionScreenNavigationProp>();
   const [selectedDietPlan, setSelectedDietPlan] = useState<DietPlan | null>(null);
   const [selectedWorkoutPlan, setSelectedWorkoutPlan] = useState<WorkoutPlan | null>(null);
-  const [showPayment, setShowPayment] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedPlanForModal, setSelectedPlanForModal] = useState<{
     plan: DietPlan | WorkoutPlan;
@@ -85,22 +83,16 @@ const PlanSelectionScreen = () => {
     { id: "wp_4day_bw", name: "4-Day Bodyweight Mastery", frequency: "4day" }
   ];
 
-  const getSubscriptionType = () => {
-    if (selectedDietPlan && selectedWorkoutPlan) return 'bundle';
-    if (selectedDietPlan) return 'diet_only';
-    if (selectedWorkoutPlan) return 'workout_only';
-    return null;
+  const handlePlanSelect = (plan: DietPlan | WorkoutPlan, type: 'diet' | 'workout') => {
+    if (type === 'diet') {
+      setSelectedDietPlan(selectedDietPlan?.id === plan.id ? null : plan);
+    } else {
+      setSelectedWorkoutPlan(selectedWorkoutPlan?.id === plan.id ? null : plan);
+    }
+    setSelectedPlanForModal(null);
   };
 
-  const getPrice = () => {
-    const type = getSubscriptionType();
-    if (type === 'bundle') return 4.99;
-    if (type === 'diet_only') return 2.99;
-    if (type === 'workout_only') return 2.49;
-    return 0;
-  };
-
-  const handlePaymentSuccess = async () => {
+  const handleSubmit = async () => {
     try {
       setLoading(true);
       await planService.selectPlans({
@@ -114,15 +106,6 @@ const PlanSelectionScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handlePlanSelect = (plan: DietPlan | WorkoutPlan, type: 'diet' | 'workout') => {
-    if (type === 'diet') {
-      setSelectedDietPlan(selectedDietPlan?.id === plan.id ? null : plan);
-    } else {
-      setSelectedWorkoutPlan(selectedWorkoutPlan?.id === plan.id ? null : plan);
-    }
-    setSelectedPlanForModal(null);
   };
 
   return (
@@ -193,7 +176,6 @@ const PlanSelectionScreen = () => {
             ))}
           </View>
 
-
           <TouchableOpacity
             style={styles.calculateButton}
             onPress={calculateBMR}
@@ -209,9 +191,8 @@ const PlanSelectionScreen = () => {
           )}
         </View>
 
-        <Text style={styles.title}>Choose Your Plans</Text>
+        <Text style={styles.title}>Choose Your Plan(s)</Text>
 
-        {/* Original code continues... */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Diet Plans</Text>
           {dietPlans.map((plan) => (
@@ -257,18 +238,14 @@ const PlanSelectionScreen = () => {
         </View>
 
         {(selectedDietPlan || selectedWorkoutPlan) && (
-          <View style={styles.priceSection}>
-            <Text style={styles.price}>£{getPrice().toFixed(2)}/month</Text>
-            {selectedDietPlan && selectedWorkoutPlan && (
-              <Text style={styles.bundleText}>Bundle Price! Save £0.49/month</Text>
-            )}
+          <View style={styles.actionSection}>
             <TouchableOpacity
-              style={styles.subscribeButton}
-              onPress={() => setShowPayment(true)}
+              style={styles.selectButton}
+              onPress={handleSubmit}
               disabled={loading}
             >
-              <Text style={styles.subscribeButtonText}>
-                {loading ? 'Processing...' : 'Subscribe Now'}
+              <Text style={styles.selectButtonText}>
+                {loading ? 'Processing...' : 'Select Plan(s)'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -288,18 +265,12 @@ const PlanSelectionScreen = () => {
             }
           />
         )}
-
-        <PaymentModal
-          visible={showPayment}
-          onClose={() => setShowPayment(false)}
-          onSuccess={handlePaymentSuccess}
-          planType={getSubscriptionType() || 'workout_only'}
-          amount={getPrice()}
-        />
       </ScrollView>
     </SafeAreaView>
   );
 };
+
+
 
 const styles = StyleSheet.create({
   // Original styles
@@ -384,6 +355,25 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   subscribeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  actionSection: {
+    backgroundColor: '#FFF5F5',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  selectButton: {
+    backgroundColor: '#FF0000',
+    paddingVertical: 15,
+    paddingHorizontal: 40,
+    borderRadius: 25,
+    marginTop: 15,
+  },
+  selectButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',

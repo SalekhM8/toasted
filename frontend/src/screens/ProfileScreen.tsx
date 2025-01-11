@@ -52,15 +52,6 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
-  const SubscriptionInfo: React.FC = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Subscription</Text>
-      <Text style={styles.infoText}>
-        To request downgrades or cancellations, please email us at support@toastedfitness.com
-      </Text>
-    </View>
-  );
-
   const handleUpdateNotifications = async (notificationSettings: User['settings']['notifications']) => {
     if (user) {
       try {
@@ -135,33 +126,32 @@ const ProfileScreen: React.FC = () => {
         </>
       )}
 
-<View style={styles.section}>
-  <TouchableOpacity 
-    style={styles.editButton}
-    onPress={() => setShowPlanModification(!showPlanModification)}
-  >
-    <Text style={styles.editButtonText}>
-      {showPlanModification ? 'Cancel' : 'Modify Plans'}
-    </Text>
-  </TouchableOpacity>
-  
-  {showPlanModification && (
-    <PlanModification
-      currentPlan={{
-        workoutPlanId: user.workoutPlanId,
-        dietPlanId: user.dietPlanId
-      }}
-      onPlanUpdated={fetchProfile}
-      onClose={() => setShowPlanModification(false)}
-    />
-  )}
-</View>
+      <View style={styles.section}>
+        <TouchableOpacity 
+          style={styles.editButton}
+          onPress={() => setShowPlanModification(!showPlanModification)}
+        >
+          <Text style={styles.editButtonText}>
+            {showPlanModification ? 'Cancel' : 'Modify Plan(s)'}
+          </Text>
+        </TouchableOpacity>
+        
+        {showPlanModification && (
+          <PlanModification
+            currentPlan={{
+              workoutPlanId: user.workoutPlanId,
+              dietPlanId: user.dietPlanId
+            }}
+            onPlanUpdated={fetchProfile}
+            onClose={() => setShowPlanModification(false)}
+          />
+        )}
+      </View>
+
       <NotificationSettings
         settings={user.settings.notifications}
         onUpdate={handleUpdateNotifications}
       />
-      
-      <SubscriptionInfo />
       
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
@@ -181,9 +171,6 @@ const ProfileScreen: React.FC = () => {
     </ScrollView>
   );
 };
-
-
-
 
 const styles = StyleSheet.create({
   container: {

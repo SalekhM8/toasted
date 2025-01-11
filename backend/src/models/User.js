@@ -42,21 +42,7 @@ const userSchema = new mongoose.Schema({
     default: ''
   },
   // Add these fields to your User schema
-subscription: {
-  status: {
-    type: String,
-    enum: ['none', 'active', 'past_due', 'canceled'],
-    default: 'none'
-  },
-  planType: {
-    type: String,
-    enum: ['workout_only', 'diet_only', 'bundle', 'none'],
-    default: 'none'
-  },
-  currentPeriodEnd: Date,
-  stripeCustomerId: String,
-  stripeSubscriptionId: String
-},
+
 
   settings: {
     notifications: {

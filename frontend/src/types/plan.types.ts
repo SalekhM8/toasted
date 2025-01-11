@@ -77,5 +77,5 @@ export interface Exercise {
   export interface ModifyPlanResponse {
     message: string;
     plan: UserPlan;
-    requiresPayment: boolean;
+    
   }

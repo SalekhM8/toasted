@@ -146,12 +146,5 @@ export const planService = {
     }
   },
 
-  // Helper function to check if a plan is expired
-  async checkPlanExpiration(startDate: Date): Promise<boolean> {
-    const now = new Date();
-    const weeksSinceStart = Math.floor(
-      (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7)
-    );
-    return weeksSinceStart >= 6;
-  }
+  
 };

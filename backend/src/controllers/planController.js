@@ -208,49 +208,29 @@ const planController = {
   }),
 
   // Add this to your existing planController object
-modifyPlan: asyncHandler(async (req, res) => {
-  const { workoutPlanId, dietPlanId } = req.body;
-  const userId = req.user._id;
-
-  // Get current plan and subscription
-  const userPlan = await UserPlan.findOne({ userId });
-  const subscription = await Subscription.findOne({ userId });
-
-  if (!userPlan) {
-    res.status(404);
-    throw new Error('No active plan found');
-  }
-
-  // Check subscription status
-  if (subscription && subscription.status !== 'active') {
-    res.status(400);
-    throw new Error('Please resolve any pending payments before modifying your plan');
-  }
-
-  // Determine if this is an upgrade
-  const isUpgrade = (
-    (!userPlan.workoutPlanId && workoutPlanId && dietPlanId) || // Adding workout to diet
-    (!userPlan.dietPlanId && dietPlanId && workoutPlanId)    // Adding diet to workout
-  );
-
-  if (isUpgrade && (!subscription || subscription.status !== 'active')) {
-    res.status(400);
-    throw new Error('Payment required for plan upgrade');
-  }
-
-  // Update the plan
-  if (workoutPlanId !== undefined) userPlan.workoutPlanId = workoutPlanId;
-  if (dietPlanId !== undefined) userPlan.dietPlanId = dietPlanId;
-
-  // Save the updated plan
-  await userPlan.save();
-
-  res.status(200).json({
-    message: 'Plan updated successfully',
-    plan: userPlan,
-    requiresPayment: isUpgrade
-  });
-}),
+  modifyPlan: asyncHandler(async (req, res) => {
+    const { workoutPlanId, dietPlanId } = req.body;
+    const userId = req.user._id;
+  
+    const userPlan = await UserPlan.findOne({ userId });
+  
+    if (!userPlan) {
+      res.status(404);
+      throw new Error('No active plan found');
+    }
+  
+    // Update the plan
+    if (workoutPlanId !== undefined) userPlan.workoutPlanId = workoutPlanId;
+    if (dietPlanId !== undefined) userPlan.dietPlanId = dietPlanId;
+  
+    // Save the updated plan
+    await userPlan.save();
+  
+    res.status(200).json({
+      message: 'Plan updated successfully',
+      plan: userPlan
+    });
+  }),
 
   completeMeal: asyncHandler(async (req, res) => {
     const userId = req.user._id;

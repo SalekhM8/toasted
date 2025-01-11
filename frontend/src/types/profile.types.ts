@@ -10,12 +10,6 @@ export interface User {
   weight?: number;
   goalWeight?: number;
   profilePicture?: string;
-  subscription: {
-    status: 'none' | 'active' | 'past_due' | 'canceled';
-    planType: 'workout_only' | 'diet_only' | 'bundle' | 'none';
-    planId?: string;
-    currentPeriodEnd?: Date;
-  };
   settings: {
     notifications: {
       enabled: boolean;

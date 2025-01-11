@@ -10,7 +10,7 @@ const { errorHandler, notFound } = require('./middlewares/errorMiddleware');
 const progressRoutes = require('./routes/progressRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const planRoutes = require('./routes/planRoutes');
-const paymentRoutes = require('./routes/paymentRoutes');
+
 
 // Initialize express app first
 const app = express();
@@ -41,7 +41,7 @@ app.use(cors({
 }));
 
 // Important: Stripe webhook route must come BEFORE express.json()
-app.use('/api/payments/webhook', require('./routes/webhookRoutes'));
+a
 
 
 // Regular middleware
@@ -79,7 +79,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api', progressRoutes);
 app.use('/api/users', profileRoutes);
 app.use('/api/plans', planRoutes);
-app.use('/api/payments', paymentRoutes);
+
 
 
 // Error handling middleware
