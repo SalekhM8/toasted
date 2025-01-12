@@ -25,9 +25,4 @@
       "expo-build-properties"
     ]
   }
-}        "NSLocationWhenInUseUsageDescription": "This app does not use your location but contains libraries that require location permissions.",
-        "NSUserTrackingUsageDescription": "This app does not track you but contains libraries that require tracking permissions."
-      }
-    }
-  }
 }
