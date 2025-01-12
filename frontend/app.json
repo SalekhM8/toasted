@@ -4,7 +4,6 @@
     "slug": "toasted-fitness-v2",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "extra": {
       "eas": {
@@ -19,6 +18,14 @@
         "NSPhotoLibraryUsageDescription": "This app does not use your photo library but contains libraries that require photo permissions.",
         "NSPhotoLibraryAddUsageDescription": "This app does not use your photo library but contains libraries that require photo permissions.",
         "NSLocationWhenInUseUsageDescription": "This app does not use your location but contains libraries that require location permissions.",
+        "NSUserTrackingUsageDescription": "This app does not track you but contains libraries that require tracking permissions."
+      }
+    },
+    "plugins": [
+      "expo-build-properties"
+    ]
+  }
+}        "NSLocationWhenInUseUsageDescription": "This app does not use your location but contains libraries that require location permissions.",
         "NSUserTrackingUsageDescription": "This app does not track you but contains libraries that require tracking permissions."
       }
     }
