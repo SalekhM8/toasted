@@ -3,13 +3,6 @@
     "name": "Toasted Health",
     "slug": "toasted-fitness-v2",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "userInterfaceStyle": "light",
-    "extra": {
-      "eas": {
-        "projectId": "433d2298-b9fa-4e39-81f6-787613f2a357"
-      }
-    },
     "ios": {
       "bundleIdentifier": "com.salekh.toasted",
       "buildNumber": "3",
@@ -20,9 +13,6 @@
         "NSLocationWhenInUseUsageDescription": "This app does not use your location but contains libraries that require location permissions.",
         "NSUserTrackingUsageDescription": "This app does not track you but contains libraries that require tracking permissions."
       }
-    },
-    "plugins": [
-      "expo-build-properties"
-    ]
+    }
   }
 }
