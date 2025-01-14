@@ -6,14 +6,8 @@
     "icon": "./assets/icon.png",
     "ios": {
       "bundleIdentifier": "com.salekh.toasted",
-      "buildNumber": "3",
-      "infoPlist": {
-        "NSCameraUsageDescription": "This app does not use your camera but contains libraries that require camera permissions.",
-        "NSPhotoLibraryUsageDescription": "This app does not use your photo library but contains libraries that require photo permissions.",
-        "NSPhotoLibraryAddUsageDescription": "This app does not use your photo library but contains libraries that require photo permissions.",
-        "NSLocationWhenInUseUsageDescription": "This app does not use your location but contains libraries that require location permissions.",
-        "NSUserTrackingUsageDescription": "This app does not track you but contains libraries that require tracking permissions."
+      "buildNumber": "3"
       }
     }
   }
-}
+

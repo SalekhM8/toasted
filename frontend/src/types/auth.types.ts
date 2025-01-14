@@ -2,10 +2,10 @@ export interface User {
     _id: string;
     name: string;
     email: string;
-    age: number;
-    height: number;
-    weight: number;
-    goalWeight: number;
+    age?: number;
+    height?: number;
+    weight?: number;
+    goalWeight?: number;
     profilePicture?: string;
     notificationsEnabled: boolean;
     createdAt: string;

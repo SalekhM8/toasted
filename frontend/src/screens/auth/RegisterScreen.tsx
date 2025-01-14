@@ -48,7 +48,7 @@ const RegisterScreen = ({ navigation }: Props) => {
           <View style={styles.container}>
             <Text style={styles.title}>Register</Text>
             
-            <Text style={styles.sectionTitle}>Account Information</Text>
+            <Text style={styles.sectionTitle}>Account Information (Required)</Text>
             <TextInput
               style={styles.input}
               placeholder="Name"
@@ -71,7 +71,7 @@ const RegisterScreen = ({ navigation }: Props) => {
               secureTextEntry
             />
 
-            <Text style={styles.sectionTitle}>Personal Information</Text>
+            <Text style={styles.sectionTitle}>Personal Information (Optional)</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter your age"
@@ -89,7 +89,7 @@ const RegisterScreen = ({ navigation }: Props) => {
               keyboardType="numeric"
             />
 
-            <Text style={styles.sectionTitle}>Weight Goals</Text>
+            <Text style={styles.sectionTitle}>Weight Goals (Optional)</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter your current weight in kg"

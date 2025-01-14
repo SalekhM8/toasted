@@ -22,20 +22,20 @@ const userSchema = new mongoose.Schema({
   },
   age: {
     type: Number,
-    required: [true, 'Please add your age'],
+    required: ['Please add your age'],
     min: [13, 'Must be at least 13 years old']
   },
   height: {
     type: Number,
-    required: [true, 'Please add your height in cm']
+    required: ['Please add your height in cm']
   },
   weight: {
     type: Number,
-    required: [true, 'Please add your weight in kg']
+    required: ['Please add your weight in kg']
   },
   goalWeight: {
     type: Number,
-    required: [true, 'Please add your goal weight in kg']
+    required: ['Please add your goal weight in kg']
   },
   profilePicture: {
     type: String,

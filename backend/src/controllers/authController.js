@@ -8,6 +8,12 @@ const { generateToken, generateRefreshToken } = require('../utils/generateToken'
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password, age, height, weight, goalWeight } = req.body;
 
+  // Only check required fields
+  if (!name || !email || !password) {
+    res.status(400);
+    throw new Error('Please fill in all required fields');
+  }
+
   const userExists = await User.findOne({ email: email.toLowerCase() });
 
   if (userExists) {
@@ -15,15 +21,20 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new Error('User already exists');
   }
 
-  const user = await User.create({
+  // Create user with only required fields
+  const userData = {
     name,
     email: email.toLowerCase(),
     password,
-    age,
-    height,
-    weight,
-    goalWeight
-  });
+  };
+
+  // Add optional fields if provided
+  if (age) userData.age = age;
+  if (height) userData.height = height;
+  if (weight) userData.weight = weight;
+  if (goalWeight) userData.goalWeight = goalWeight;
+
+  const user = await User.create(userData);
 
   if (user) {
     // Generate tokens
