@@ -21,21 +21,16 @@ const userSchema = new mongoose.Schema({
     minlength: [6, 'Password must be at least 6 characters']
   },
   age: {
-    type: Number,
-    required: ['Please add your age'],
-    min: [13, 'Must be at least 13 years old']
+    type: Number
   },
   height: {
-    type: Number,
-    required: ['Please add your height in cm']
+    type: Number
   },
   weight: {
-    type: Number,
-    required: ['Please add your weight in kg']
+    type: Number
   },
   goalWeight: {
-    type: Number,
-    required: ['Please add your goal weight in kg']
+    type: Number
   },
   profilePicture: {
     type: String,
