@@ -63,6 +63,7 @@ const RegisterScreen = ({ navigation }: Props) => {
               keyboardType="email-address"
               autoCapitalize="none"
             />
+            <Text style={styles.helperText}>Email must be a valid email</Text>
             <TextInput
               style={styles.input}
               placeholder="Password"
@@ -70,6 +71,7 @@ const RegisterScreen = ({ navigation }: Props) => {
               onChangeText={handleChange('password')}
               secureTextEntry
             />
+            <Text style={styles.helperText}>Password must be at least 6 characters</Text>
 
             <Text style={styles.sectionTitle}>Personal Information (Optional)</Text>
             <TextInput
@@ -142,6 +144,16 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
     borderRadius: 5,
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: -5,
+    marginBottom: 10,
+    marginLeft: 5,
+  },
+  errorText: {
+    color: '#FF0000',
   },
   error: {
     color: 'red',
