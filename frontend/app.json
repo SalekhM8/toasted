@@ -6,8 +6,15 @@
     "icon": "./assets/icon.png",
     "ios": {
       "bundleIdentifier": "com.salekh.toasted",
-      "buildNumber": "3"
+      "buildNumber": "3",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app does not actively use your camera but contains libraries that require camera permissions."
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "433d2298-b9fa-4e39-81f6-787613f2a357"
       }
     }
   }
-
+}
