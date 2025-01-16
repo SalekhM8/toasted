@@ -187,10 +187,10 @@ const PlanSelectionScreen = () => {
             <View style={styles.bmrResult}>
               <Text style={styles.bmrText}>Your Daily Calories:</Text>
               <Text style={styles.bmrNumber}>{bmr} kcal/day</Text>
+              <Text style={styles.citationText}>
+                BMR calculation based on Mifflin-St Jeor Equation (1990). Source: American Journal of Clinical Nutrition
+              </Text>
             </View>
-	    <Text style={styles.citationText}>
- 		 BMR calculation based on Mifflin-St Jeor Equation (1990). Source: American Journal of Clinical Nutrition
-	    </Text>
           )}
         </View>
 
