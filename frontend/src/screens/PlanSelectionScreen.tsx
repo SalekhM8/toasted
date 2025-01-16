@@ -188,6 +188,9 @@ const PlanSelectionScreen = () => {
               <Text style={styles.bmrText}>Your Daily Calories:</Text>
               <Text style={styles.bmrNumber}>{bmr} kcal/day</Text>
             </View>
+	    <Text style={styles.citationText}>
+ 		 BMR calculation based on Mifflin-St Jeor Equation (1990). Source: American Journal of Clinical Nutrition
+	    </Text>
           )}
         </View>
 
@@ -306,6 +309,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
   },
+ citationText: {
+     fontSize: 12,
+     color: '#666',
+     textAlign: 'center',
+     marginTop: 10,
+},
   selectedCard: {
     borderColor: '#FF0000',
     backgroundColor: '#FFF5F5',
