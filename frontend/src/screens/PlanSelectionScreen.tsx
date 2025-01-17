@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation.types';
 import { planService } from '../services/planService';
 import PlanDetailModal from '../components/plans/PlanDetailModal';
+import { Linking } from 'react-native';
 
 interface DietPlan {
   id: string;
@@ -184,14 +185,29 @@ const PlanSelectionScreen = () => {
           </TouchableOpacity>
 
           {bmr !== null && (
-            <View style={styles.bmrResult}>
-              <Text style={styles.bmrText}>Your Daily Calories:</Text>
-              <Text style={styles.bmrNumber}>{bmr} kcal/day</Text>
-              <Text style={styles.citationText}>
-                BMR calculation based on Mifflin-St Jeor Equation (1990). Source: American Journal of Clinical Nutrition
-              </Text>
-            </View>
-          )}
+  <View style={styles.bmrResult}>
+    <Text style={styles.bmrText}>Your Daily Calories:</Text>
+    <Text style={styles.bmrNumber}>{bmr} kcal/day</Text>
+    
+    <TouchableOpacity
+      onPress={() => Linking.openURL('https://pubmed.ncbi.nlm.nih.gov/2305711/')}
+    >
+      <Text style={styles.citationText}>
+        Primary BMR calculation based on Mifflin-St Jeor Equation (1990){'\n'}
+        Source: Mifflin MD, St Jeor ST, et al. A new predictive equation for resting energy expenditure in healthy individuals. The American Journal of Clinical Nutrition, 51(2), 241-247.
+      </Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity 
+      onPress={() => Linking.openURL('https://pubmed.ncbi.nlm.nih.gov/9550168/')}
+    >
+      <Text style={styles.citationText}>
+        Activity multipliers based on Harris-Benedict equations (1918, revised 1984){'\n'}
+        Source: Roza AM, Shizgal HM. The Harris Benedict equation reevaluated: resting energy requirements and the body cell mass. The American Journal of Clinical Nutrition, 40(1), 168-182.
+      </Text>
+    </TouchableOpacity>
+  </View>
+)}
         </View>
 
         <Text style={styles.title}>Choose Your Plan(s)</Text>
@@ -310,10 +326,11 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
   },
  citationText: {
-     fontSize: 12,
-     color: '#666',
-     textAlign: 'center',
-     marginTop: 10,
+  fontSize: 12,
+  color: '#666',
+  textAlign: 'center',
+  marginTop: 10,
+  textDecorationLine: 'underline',
 },
   selectedCard: {
     borderColor: '#FF0000',
