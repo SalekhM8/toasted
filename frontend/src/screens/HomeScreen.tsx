@@ -90,8 +90,8 @@ const HomeScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.logo}>toasted</Text>
-        <Text style={styles.welcomeText}>Welcome Back,</Text>
-        <Text style={styles.username}>Salekh</Text>
+        <Text style={styles.welcomeText}>Welcome!</Text>
+        <Text style={styles.username}></Text>
       </View>
 
       <View style={styles.tabContainer}>

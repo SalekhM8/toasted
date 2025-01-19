@@ -180,34 +180,37 @@ const PlanSelectionScreen = () => {
           <TouchableOpacity
             style={styles.calculateButton}
             onPress={calculateBMR}
-          >
+            >
             <Text style={styles.calculateButtonText}>Calculate BMR</Text>
           </TouchableOpacity>
-
+          
+          <View style={styles.citationsBox}>
+            <Text style={styles.citationsHeader}>Medical References:</Text>
+            <TouchableOpacity
+              onPress={() => Linking.openURL('https://pubmed.ncbi.nlm.nih.gov/2305711/')}
+            >
+              <Text style={styles.citationText}>
+                BMR: Mifflin-St Jeor Equation (1990) - View Source
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => Linking.openURL('https://pubmed.ncbi.nlm.nih.gov/9550168/')}
+            >
+              <Text style={styles.citationText}>
+                Activity Levels: Harris-Benedict Equation (1984) - View Source
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.disclaimer}>
+              Please consult healthcare provider for personalized advice.
+            </Text>
+          </View>
+          
           {bmr !== null && (
-  <View style={styles.bmrResult}>
-    <Text style={styles.bmrText}>Your Daily Calories:</Text>
-    <Text style={styles.bmrNumber}>{bmr} kcal/day</Text>
-    
-    <TouchableOpacity
-      onPress={() => Linking.openURL('https://pubmed.ncbi.nlm.nih.gov/2305711/')}
-    >
-      <Text style={styles.citationText}>
-        Primary BMR calculation based on Mifflin-St Jeor Equation (1990){'\n'}
-        Source: Mifflin MD, St Jeor ST, et al. A new predictive equation for resting energy expenditure in healthy individuals. The American Journal of Clinical Nutrition, 51(2), 241-247.
-      </Text>
-    </TouchableOpacity>
-
-    <TouchableOpacity 
-      onPress={() => Linking.openURL('https://pubmed.ncbi.nlm.nih.gov/9550168/')}
-    >
-      <Text style={styles.citationText}>
-        Activity multipliers based on Harris-Benedict equations (1918, revised 1984){'\n'}
-        Source: Roza AM, Shizgal HM. The Harris Benedict equation reevaluated: resting energy requirements and the body cell mass. The American Journal of Clinical Nutrition, 40(1), 168-182.
-      </Text>
-    </TouchableOpacity>
-  </View>
-)}
+            <View style={styles.bmrResult}>
+              <Text style={styles.bmrText}>Your Daily Calories:</Text>
+              <Text style={styles.bmrNumber}>{bmr} kcal/day</Text>
+            </View>
+          )}
         </View>
 
         <Text style={styles.title}>Choose Your Plan(s)</Text>
@@ -411,6 +414,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF5F5',
     padding: 15,
     borderRadius: 10,
+  },
+  citationsBox: {
+    marginTop: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+  },
+  citationsHeader: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    textAlign: 'center',
+  },
+  disclaimer: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 5,
   },
   genderButtons: {
     flexDirection: 'row',
