@@ -63,19 +63,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   useEffect(() => {
-    loadToken();
+    loadPersistedAuth();
   }, []);
 
-  const loadToken = async () => {
+  const loadPersistedAuth = async () => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      if (token) {
+      const [token, userDataStr] = await Promise.all([
+        AsyncStorage.getItem('userToken'),
+        AsyncStorage.getItem('userData')
+      ]);
+  
+      if (token && userDataStr) {
+        const userData = JSON.parse(userDataStr);
         authService.setAuthHeader(token);
-        // You might want to validate the token here
+        dispatch({
+          type: 'SET_USER',
+          payload: { user: userData, token }
+        });
       }
-      dispatch({ type: 'SET_LOADING', payload: false });
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Error loading auth state' });
+      console.error('Error loading auth state:', error);
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
 
@@ -83,7 +92,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       const response = await authService.login({ email, password });
-      await AsyncStorage.setItem('userToken', response.accessToken);
+      
+      await Promise.all([
+        AsyncStorage.setItem('userToken', response.accessToken),
+        AsyncStorage.setItem('userData', JSON.stringify(response))
+      ]);
+  
       authService.setAuthHeader(response.accessToken);
       dispatch({
         type: 'SET_USER',
@@ -102,7 +116,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       const response = await authService.register(registerData);
-      await AsyncStorage.setItem('userToken', response.accessToken);
+      
+      await Promise.all([
+        AsyncStorage.setItem('userToken', response.accessToken),
+        AsyncStorage.setItem('userData', JSON.stringify(response))
+      ]);
+  
       authService.setAuthHeader(response.accessToken);
       dispatch({
         type: 'SET_USER',
@@ -119,24 +138,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      
-      // Call backend logout endpoint
       await authService.logout();
-      
-      // Clear local storage
-      await AsyncStorage.removeItem('userToken');
-      
-      // Reset auth service header
-      authService.setAuthHeader(null);
-      
-      // Reset auth state
-      dispatch({ type: 'LOGOUT' });
-      
     } catch (error) {
       console.error('Logout error:', error);
-      // Still logout on frontend even if backend fails
-      await AsyncStorage.removeItem('userToken');
+    } finally {
+      await Promise.all([
+        AsyncStorage.removeItem('userToken'),
+        AsyncStorage.removeItem('userData')
+      ]);
       authService.setAuthHeader(null);
       dispatch({ type: 'LOGOUT' });
     }

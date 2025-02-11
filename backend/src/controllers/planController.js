@@ -79,16 +79,17 @@ const planController = {
       dietPlan: !!dietPlan
     });
 
-    // Calculate current day based on start date
+    // Set both dates to midnight for proper calendar day comparison
     const startDate = new Date(userPlan.startDate);
+    startDate.setHours(0, 0, 0, 0);
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Calculate days based on calendar days
     const daysSinceStart = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
-    
-    // Get today's workout (if it's a workout day)
-    const weekNumber = Math.floor(daysSinceStart / 7) % 6; // 6-week cycle
+    const weekNumber = Math.floor(daysSinceStart / 7) % 6;
     const dayNumber = daysSinceStart % 7;
 
-    // Check if it's a workout day based on frequency
     let todaysWorkout = null;
     const workoutDays = workoutPlan?.weeks[weekNumber];
     console.log('Workout calculation:', {
@@ -106,7 +107,6 @@ const planController = {
       }
     }
 
-    // Get today's meals (2-week cycle)
     const todaysMeals = dietPlan?.weekCycle[dayNumber % 14];
 
     const todaysPlan = {
@@ -146,14 +146,18 @@ const planController = {
       dietPlan: !!dietPlan
     });
 
+    // Set both dates to midnight for proper calendar day comparison
     const startDate = new Date(userPlan.startDate);
+    startDate.setHours(0, 0, 0, 0);
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const weekPlan = [];
 
     // Generate 7 days of plans
     for (let i = 0; i < 7; i++) {
       const date = new Date(today);
       date.setDate(date.getDate() + i);
+      date.setHours(0, 0, 0, 0);  // Set each day's date to midnight too
       
       const daysSinceStart = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
       const weekNumber = Math.floor(daysSinceStart / 7) % 6;
@@ -219,11 +223,14 @@ const planController = {
       throw new Error('No active plan found');
     }
   
-    // Update the plan
     if (workoutPlanId !== undefined) userPlan.workoutPlanId = workoutPlanId;
     if (dietPlanId !== undefined) userPlan.dietPlanId = dietPlanId;
+    userPlan.startDate = new Date();
+    userPlan.progress = {
+      completedWorkouts: [],
+      completedMeals: []
+    };
   
-    // Save the updated plan
     await userPlan.save();
   
     res.status(200).json({
