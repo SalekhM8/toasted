@@ -8,9 +8,9 @@ export type BottomTabParamList = {
 };
 
 export type RootStackParamList = {
+  Loading: undefined;
   Login: undefined;
   Register: undefined;
-  MainTabs: NavigatorScreenParams<BottomTabParamList>;
   PlanSelection: undefined;
-  Home: undefined; 
+  MainTabs: NavigatorScreenParams<BottomTabParamList>;
 };

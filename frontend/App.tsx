@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { AuthProvider } from './src/context/AuthContext';
 import LoginScreen from './src/screens/auth/LoginScreen';
+import LoadingScreen from './src/screens/common/LoadingScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import AppNavigator from './src/navigation/AppNavigator';
 import { RootStackParamList } from './src/types/navigation.types';
@@ -16,11 +17,12 @@ export default function App() {
           <AuthProvider>
         <NavigationContainer>
           <Stack.Navigator
-            initialRouteName="Login"
+            initialRouteName="Loading"
             screenOptions={{
               headerShown: false
             }}
           >
+            <Stack.Screen name="Loading" component={LoadingScreen} />  
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="MainTabs" component={AppNavigator} />
