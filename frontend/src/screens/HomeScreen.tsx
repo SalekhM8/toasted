@@ -10,12 +10,13 @@ import {
   Platform,
   StatusBar
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';  // Added useRoute
 import { planService } from '../services/planService';
 import { DayPlan } from '../types/plan.types';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation.types';
+
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -24,11 +25,28 @@ const HomeScreen = () => {
   const [todaysPlan, setTodaysPlan] = useState<DayPlan | null>(null);
   const [activeTab, setActiveTab] = useState<'Diet' | 'Training'>('Diet');
   const [loading, setLoading] = useState(true);
+  const route = useRoute();
+  
+  // Get initial plan from navigation params
+  const initialPlan = route.params?.initialPlan;
 
+  useEffect(() => {
+    // If we have an initial plan from LoadingScreen, use it
+    if (initialPlan) {
+      setTodaysPlan(initialPlan);
+      setLoading(false);
+    } else {
+      fetchTodaysPlan();
+    }
+  }, [initialPlan]);
+
+  // Only fetch on tab focus if we don't have a plan
   useFocusEffect(
     useCallback(() => {
-      fetchTodaysPlan();
-    }, [])  // Remove loading dependency
+      if (!todaysPlan) {
+        fetchTodaysPlan();
+      }
+    }, [])
   );
 
   const fetchTodaysPlan = async () => {
@@ -41,6 +59,8 @@ const HomeScreen = () => {
       setLoading(false);
     }
   };
+
+  // Rest of your HomeScreen code remains the same...
 
   const handleCompleteWorkout = async () => {
     try {
