@@ -2,7 +2,7 @@
   "expo": {
     "name": "Toasted Health",
     "slug": "toasted-fitness-v2",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "icon": "./assets/icon.png",
     "ios": {
       "bundleIdentifier": "com.salekh.toasted",
