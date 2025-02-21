@@ -58,9 +58,10 @@ const MainTabs = () => (
   </Tab.Navigator>
 );
 
-// Rest of AppNavigator stays the same
 const AppNavigator = () => (
-  <Stack.Navigator>
+  <Stack.Navigator
+    initialRouteName="MainTabs"  // Add this line
+  >
     <Stack.Screen
       name="PlanSelection"
       component={PlanSelectionScreen}
