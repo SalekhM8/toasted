@@ -2,11 +2,11 @@
   "expo": {
     "name": "Toasted Health",
     "slug": "toasted-fitness-v2",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "icon": "./assets/icon.png",
     "ios": {
       "bundleIdentifier": "com.salekh.toasted",
-      "buildNumber": "3",
+      "buildNumber": "20",
       "infoPlist": {
         "NSCameraUsageDescription": "This app does not actively use your camera but contains libraries that require camera permissions."
       }
