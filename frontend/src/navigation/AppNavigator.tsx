@@ -7,6 +7,10 @@ import ScheduleScreen from '../screens/schedule/ScheduleScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TrackerScreen from '../screens/TrackerScreen';
 import PlanSelectionScreen from '../screens/PlanSelectionScreen';
+import ShoppingListScreen from '../screens/schedule/ShoppingListScreen';
+import MealSwapScreen from '../screens/meals/MealSwapScreen';
+import MealEditorScreen from '../screens/meals/MealEditorScreen';
+import FoodSearchScreen from '../screens/meals/FoodSearchScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -70,6 +74,26 @@ const AppNavigator = () => (
     <Stack.Screen
       name="MainTabs"
       component={MainTabs}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="ShoppingList"
+      component={ShoppingListScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="MealSwap"
+      component={MealSwapScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="MealEditor"
+      component={MealEditorScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="FoodSearch"
+      component={FoodSearchScreen}
       options={{ headerShown: false }}
     />
   </Stack.Navigator>

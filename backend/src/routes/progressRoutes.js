@@ -5,11 +5,12 @@ const { protect } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-router.use(protect);
+// Remove the blanket middleware
+// router.use(protect);
 
-// Updated routes to match controller method names
-router.post('/progress/weight', logWeight);
-router.get('/progress', getProgress);
-router.post('/progress/completion', logCompletion);
+// Apply protect middleware to each individual route that needs authentication
+router.post('/progress/weight', protect, logWeight);
+router.get('/progress', protect, getProgress);
+router.post('/progress/completion', protect, logCompletion);
 
 module.exports = router;

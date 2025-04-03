@@ -102,6 +102,74 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Social authentication (Google/Apple)
+// @route   POST /api/auth/social
+// @access  Public
+const socialAuth = asyncHandler(async (req, res) => {
+  const { provider, token, email, name } = req.body;
+  
+  if (!provider || !token || !email) {
+    res.status(400);
+    throw new Error('Missing required social authentication parameters');
+  }
+  
+  // Normalize the email to lowercase
+  const normalizedEmail = email.toLowerCase();
+
+  // Find existing user by email
+  let user = await User.findOne({ email: normalizedEmail });
+  
+  // If user exists, update their social ID
+  if (user) {
+    // Update the user with the social provider ID if not already set
+    if (provider === 'google' && !user.googleId) {
+      user.googleId = token;
+    }
+    if (provider === 'apple' && !user.appleId) {
+      user.appleId = token;
+    }
+    await user.save();
+  } else {
+    // Create a new user with the social credentials
+    const userData = {
+      name: name || email.split('@')[0], // Use name or generate from email
+      email: normalizedEmail,
+    };
+    
+    // Set the appropriate social provider ID
+    if (provider === 'google') {
+      userData.googleId = token;
+    } else if (provider === 'apple') {
+      userData.appleId = token;
+    }
+    
+    user = await User.create(userData);
+  }
+  
+  // Generate tokens
+  const accessToken = generateToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+  
+  // Save refresh token to user
+  user.refreshToken = refreshToken;
+  await user.save();
+  
+  // Set refresh token in HTTP-only cookie
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  });
+  
+  res.json({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    accessToken
+  });
+});
+
 // @desc    Logout user
 // @route   POST /api/auth/logout
 // @access  Private
@@ -120,5 +188,6 @@ const logoutUser = asyncHandler(async (req, res) => {
 module.exports = {
   registerUser,
   loginUser,
-  logoutUser
+  logoutUser,
+  socialAuth
 };

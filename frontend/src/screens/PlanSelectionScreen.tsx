@@ -26,6 +26,7 @@ const PlanSelectionScreen = () => {
   const [selectedDietPlan, setSelectedDietPlan] = useState<DietPlan | null>(null);
   const [selectedWorkoutPlan, setSelectedWorkoutPlan] = useState<WorkoutPlan | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedPlanForModal, setSelectedPlanForModal] = useState<{
     plan: DietPlan | WorkoutPlan;
     type: 'diet' | 'workout';
@@ -86,24 +87,43 @@ const PlanSelectionScreen = () => {
 
   const handlePlanSelect = (plan: DietPlan | WorkoutPlan, type: 'diet' | 'workout') => {
     if (type === 'diet') {
-      setSelectedDietPlan(selectedDietPlan?.id === plan.id ? null : plan);
+      setSelectedDietPlan(plan as DietPlan);
     } else {
-      setSelectedWorkoutPlan(selectedWorkoutPlan?.id === plan.id ? null : plan);
+      setSelectedWorkoutPlan(plan as WorkoutPlan);
     }
     setSelectedPlanForModal(null);
   };
 
   const handleSubmit = async () => {
+    if (!selectedWorkoutPlan || !selectedDietPlan) {
+      setError('Please select both a workout plan and a diet plan');
+      return;
+    }
+
     try {
       setLoading(true);
-      await planService.selectPlans({
-        workoutPlanId: selectedWorkoutPlan?.id,
-        dietPlanId: selectedDietPlan?.id,
+      setError(null);
+      
+      console.log('Submitting plan selection:', {
+        workoutPlanId: selectedWorkoutPlan.id,
+        dietPlanId: selectedDietPlan.id,
         startDate: new Date()
       });
-      navigation.navigate('MainTabs');
-    } catch (error) {
+      
+      await planService.selectPlans({
+        workoutPlanId: selectedWorkoutPlan.id,
+        dietPlanId: selectedDietPlan.id,
+        startDate: new Date()
+      });
+      
+      console.log('Plan selection successful, navigating to MainTabs');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }]
+      });
+    } catch (error: any) {
       console.error('Error saving plan selection:', error);
+      setError(`Error saving plans: ${error.message}. Please try again.`);
     } finally {
       setLoading(false);
     }
@@ -205,10 +225,12 @@ const PlanSelectionScreen = () => {
             </Text>
           </View>
           
-          {bmr !== null && (
+          {bmr && (
             <View style={styles.bmrResult}>
-              <Text style={styles.bmrText}>Your Daily Calories:</Text>
-              <Text style={styles.bmrNumber}>{bmr} kcal/day</Text>
+              <Text style={styles.bmrValue}>Your daily calories: {bmr} kcal</Text>
+              <Text style={styles.bmrDescription}>
+                This is your estimated daily caloric need to maintain your current weight.
+              </Text>
             </View>
           )}
         </View>
@@ -287,12 +309,16 @@ const PlanSelectionScreen = () => {
             }
           />
         )}
+
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 };
-
-
 
 const styles = StyleSheet.create({
   // Original styles
@@ -328,13 +354,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
   },
- citationText: {
-  fontSize: 12,
-  color: '#666',
-  textAlign: 'center',
-  marginTop: 10,
-  textDecorationLine: 'underline',
-},
+  citationText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 10,
+    textDecorationLine: 'underline',
+  },
   selectedCard: {
     borderColor: '#FF0000',
     backgroundColor: '#FFF5F5',
@@ -508,21 +534,33 @@ const styles = StyleSheet.create({
     marginTop: 15,
     alignItems: 'center',
   },
-  bmrText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  bmrNumber: {
+  bmrValue: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FF0000',
+  },
+  bmrDescription: {
+    fontSize: 16,
+    color: '#333',
   },
   inputLabel: {
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 10,
     color: '#333',
-  }
+  },
+  errorContainer: {
+    backgroundColor: '#FFF5F5',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  errorText: {
+    color: '#FF0000',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });
 
 export default PlanSelectionScreen;

@@ -4,12 +4,14 @@ const { protect } = require('../middlewares/authMiddleware');
 const {
   registerUser,
   loginUser,
-  logoutUser
+  logoutUser,
+  socialAuth
 } = require('../controllers/authController');
 
 // Public routes
 router.post('/register', registerUser);
 router.post('/login', loginUser);
+router.post('/social', socialAuth);
 
 // Protected routes
 router.post('/logout', protect, logoutUser);

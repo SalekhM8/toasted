@@ -10,6 +10,8 @@ export interface User {
     notificationsEnabled: boolean;
     createdAt: string;
     updatedAt: string;
+    googleId?: string;
+    appleId?: string;
   }
   
   export interface AuthState {
@@ -37,4 +39,11 @@ export interface User {
     name: string;
     email: string;
     accessToken: string;
+  }
+
+  export interface SocialAuthCredentials {
+    provider: 'google' | 'apple';
+    token: string;
+    name?: string;
+    email: string;
   }

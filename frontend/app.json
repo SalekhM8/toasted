@@ -1,19 +1,52 @@
 {
   "expo": {
-    "name": "Toasted Health",
-    "slug": "toasted-fitness-v2",
-    "version": "1.0.4",
+    "name": "Toasted",
+    "slug": "toasted-fitness",
+    "version": "1.0.0",
+    "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "bundleIdentifier": "com.salekh.toasted",
-      "buildNumber": "20",
+      "supportsTablet": true,
+      "bundleIdentifier": "com.toasted.fitness",
+      "buildNumber": "1.0.0",
       "infoPlist": {
-        "NSCameraUsageDescription": "This app does not actively use your camera but contains libraries that require camera permissions."
+        "NSFaceIDUsageDescription": "This app uses FaceID to make the login process easier."
+      },
+      "config": {
+        "usesNonExemptEncryption": false
       }
     },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.toasted.fitness",
+      "versionCode": 1
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-apple-authentication"
+      ]
+    ],
+    "scheme": "toastedfitness",
     "extra": {
       "eas": {
-        "projectId": "433d2298-b9fa-4e39-81f6-787613f2a357"
+        "projectId": "your-eas-project-id"
       }
     }
   }

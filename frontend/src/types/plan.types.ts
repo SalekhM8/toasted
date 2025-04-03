@@ -1,4 +1,6 @@
 // types/plans.ts
+import { StructuredIngredient } from './food.types';
+
 export interface Exercise {
     name: string;
     sets: number;
@@ -23,7 +25,31 @@ export interface Exercise {
     weeks: WorkoutDay[][];
   }
   
+  export interface Micronutrients {
+    vitamins: {
+      a: number; // IU
+      c: number; // mg
+      d: number; // IU
+      e: number; // mg
+      b1: number; // mg
+      b2: number; // mg
+      b3: number; // mg
+      b6: number; // mg
+      b12: number; // mcg
+      folate: number; // mcg
+    };
+    minerals: {
+      calcium: number; // mg
+      iron: number; // mg
+      magnesium: number; // mg
+      potassium: number; // mg
+      zinc: number; // mg
+      sodium: number; // mg
+    };
+  }
+  
   export interface Meal {
+    _id?: string;
     name: string;
     timing?: string;
     calories: number;
@@ -31,8 +57,11 @@ export interface Exercise {
     carbs: number;
     fats: number;
     ingredients: string[];
+    structuredIngredients?: StructuredIngredient[];
     instructions: string[];
     notes?: string;
+    micronutrients?: Micronutrients;
+    category?: 'home-cooked' | 'restaurant' | 'fast-food' | 'takeout';
   }
   
   export interface DietPlan {
@@ -46,6 +75,7 @@ export interface Exercise {
     userId: string;
     workoutPlanId: string;
     dietPlanId: string;
+    customDietPlanId?: string;
     startDate: Date;
     progress: {
       completedWorkouts: Date[];
@@ -77,5 +107,35 @@ export interface Exercise {
   export interface ModifyPlanResponse {
     message: string;
     plan: UserPlan;
-    
+  }
+
+  export interface AlternativeMealsResponse {
+    originalMeal: Meal;
+    alternativeMeals: Meal[];
+  }
+
+  export interface SwapMealRequest {
+    newMealId: string;
+    date: string;
+    mealNumber: number;
+  }
+
+  export interface SwapMealResponse {
+    message: string;
+    swappedMeal: Meal;
+    mealDetails?: {
+      dayNumber: number;
+      mealNumber: number;
+      originalName: string;
+      newName: string;
+    };
+    freshPlan?: DayPlan;
+    todaysPlan?: DayPlan;
+  }
+
+  export interface MacroComparison {
+    value: number;
+    diff: number;
+    percentage: number;
+    isHigher: boolean;
   }
