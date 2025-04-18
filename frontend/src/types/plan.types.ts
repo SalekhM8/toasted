@@ -102,6 +102,7 @@ export interface Exercise {
   export interface ModifyPlanRequest {
     workoutPlanId?: string;
     dietPlanId?: string;
+    customDietPlanId?: string;
   }
   
   export interface ModifyPlanResponse {

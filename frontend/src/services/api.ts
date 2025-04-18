@@ -7,7 +7,7 @@ const getApiUrl = () => {
   if (__DEV__) {
     // For Expo Go on physical devices, we need to use the computer's network IP
     // This is important because localhost/127.0.0.1 refers to the phone itself, not your computer
-    const NETWORK_IP = '192.168.1.152'; // Updated to current IP address
+    const NETWORK_IP = '192.168.1.112'; // Updated to the correct IP address
     
     // In Expo Go, we assume we're on a physical device unless we know we're in a simulator
     const isRunningInExpoGo = true; // Assuming using Expo Go as you mentioned

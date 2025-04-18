@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import PlanDetailModal from '../plans/PlanDetailModal';
 import { planService } from '../../services/planService';
 import { StyleSheet } from 'react-native';
+import axios from 'axios';
+import { API_BASE_URL } from '../../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface PlanModificationProps {
     currentPlan: {
@@ -13,6 +16,13 @@ interface PlanModificationProps {
     onClose: () => void;
 }
 
+interface CustomPlan {
+  id: string;
+  name: string;
+  description: string;
+  isCustom: true;
+}
+
 const PlanModification: React.FC<PlanModificationProps> = ({ currentPlan, onPlanUpdated }) => {
   const [selectedPlanForModal, setSelectedPlanForModal] = useState<{
     plan: any;
@@ -21,6 +31,44 @@ const PlanModification: React.FC<PlanModificationProps> = ({ currentPlan, onPlan
   const [selectedDietPlan, setSelectedDietPlan] = useState<string | null>(currentPlan.dietPlanId || null);
   const [selectedWorkoutPlan, setSelectedWorkoutPlan] = useState<string | null>(currentPlan.workoutPlanId || null);
   const [loading, setLoading] = useState(false);
+  const [customPlans, setCustomPlans] = useState<CustomPlan[]>([]);
+  const [loadingCustomPlans, setLoadingCustomPlans] = useState(true);
+
+  useEffect(() => {
+    fetchCustomPlans();
+  }, []);
+
+  const fetchCustomPlans = async () => {
+    try {
+      setLoadingCustomPlans(true);
+      const token = await AsyncStorage.getItem('userToken');
+      
+      if (!token) {
+        console.log('No token found for custom plan fetch');
+        setLoadingCustomPlans(false);
+        return;
+      }
+      
+      const response = await axios.get(`${API_BASE_URL}/plans/preference`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data && response.data.customDietPlanId) {
+        // If user has a custom plan, add it to the options
+        setCustomPlans([{
+          id: response.data.customDietPlanId,
+          name: "Your Personalized Plan",
+          description: "Custom plan based on your preferences",
+          isCustom: true
+        }]);
+      }
+    } catch (error) {
+      console.error('Error fetching custom plans:', error);
+      // Don't show an alert, just fail silently
+    } finally {
+      setLoadingCustomPlans(false);
+    }
+  };
 
   const dietPlans = [
     { id: "dp_1500", name: "Aggressive Cut - 1500kcal", calories: 1500 },
@@ -48,9 +96,13 @@ const PlanModification: React.FC<PlanModificationProps> = ({ currentPlan, onPlan
         return;
       }
 
+      // Check if the selected diet plan is a custom plan
+      const isCustomPlan = customPlans.some(plan => plan.id === selectedDietPlan);
+      
       const response = await planService.modifyPlan({
         workoutPlanId: selectedWorkoutPlan || undefined,
-        dietPlanId: selectedDietPlan || undefined
+        dietPlanId: isCustomPlan ? undefined : selectedDietPlan || undefined, // Only send dietPlanId if it's not a custom plan
+        customDietPlanId: isCustomPlan ? selectedDietPlan || undefined : undefined // Send customDietPlanId if it's a custom plan
       });
 
       Alert.alert('Success', 'Plan updated successfully');
@@ -68,18 +120,51 @@ const PlanModification: React.FC<PlanModificationProps> = ({ currentPlan, onPlan
       
       <View style={styles.plansContainer}>
         <Text style={styles.sectionTitle}>Diet Plans</Text>
-        {dietPlans.map((plan) => (
-          <TouchableOpacity
-            key={plan.id}
-            style={[
-              styles.planCard,
-              selectedDietPlan === plan.id && styles.selectedCard
-            ]}
-            onPress={() => setSelectedPlanForModal({ plan, type: 'diet' })}
-          >
-            <Text style={styles.planName}>{plan.name}</Text>
-          </TouchableOpacity>
-        ))}
+        
+        {loadingCustomPlans ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color="#FF0000" />
+            <Text style={styles.loadingText}>Loading custom plans...</Text>
+          </View>
+        ) : (
+          <>
+            {/* Custom Plans */}
+            {customPlans.length > 0 && (
+              <View style={styles.customPlansSection}>
+                <Text style={styles.customPlanLabel}>Your Custom Plans</Text>
+                {customPlans.map((plan) => (
+                  <TouchableOpacity
+                    key={plan.id}
+                    style={[
+                      styles.planCard,
+                      styles.customPlanCard,
+                      selectedDietPlan === plan.id && styles.selectedCard
+                    ]}
+                    onPress={() => setSelectedDietPlan(plan.id)}
+                  >
+                    <Text style={styles.planName}>{plan.name}</Text>
+                    <Text style={styles.planDescription}>{plan.description}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            
+            {/* Standard Diet Plans */}
+            <Text style={styles.standardPlansLabel}>Standard Diet Plans</Text>
+            {dietPlans.map((plan) => (
+              <TouchableOpacity
+                key={plan.id}
+                style={[
+                  styles.planCard,
+                  selectedDietPlan === plan.id && styles.selectedCard
+                ]}
+                onPress={() => setSelectedPlanForModal({ plan, type: 'diet' })}
+              >
+                <Text style={styles.planName}>{plan.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
 
         <Text style={styles.sectionTitle}>Training Plans</Text>
         {workoutPlans.map((plan) => (
@@ -162,6 +247,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
   },
+  customPlanCard: {
+    backgroundColor: '#FFF5F5',
+    borderColor: '#FF0000',
+    borderWidth: 1,
+  },
   selectedCard: {
     borderColor: '#FF0000',
     backgroundColor: '#FFF5F5',
@@ -169,6 +259,12 @@ const styles = StyleSheet.create({
   planName: {
     fontSize: 14,
     color: '#333',
+    fontWeight: 'bold',
+  },
+  planDescription: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
   },
   updateButton: {
     backgroundColor: '#FF0000',
@@ -183,6 +279,29 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  customPlansSection: {
+    marginBottom: 16,
+  },
+  customPlanLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FF0000',
+    marginBottom: 8,
+  },
+  standardPlansLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#666',
+    marginBottom: 8,
+  },
+  loadingContainer: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 8,
+    color: '#666',
   }
 });
 

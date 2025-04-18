@@ -67,6 +67,13 @@ app.use('/api/users', profileRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/food-items', foodRoutes);
 
+// Debug routes
+app.get('/api/routes', (req, res) => {
+  const listEndpoints = require('express-list-endpoints');
+  const endpoints = listEndpoints(app);
+  res.json(endpoints);
+});
+
 // Error handling middleware
 app.use(notFound);
 app.use(errorHandler);
@@ -137,9 +144,42 @@ const startServer = async () => {
       console.error('Error seeding food database:', error.message);
     }
     
+    // Display all routes for debugging
+    console.log('Available API Routes:');
+    const listEndpoints = require('express-list-endpoints');
+    const endpoints = listEndpoints(app);
+    
+    // Log routes in a cleaner format
+    endpoints.forEach(endpoint => {
+      const methods = endpoint.methods.join(', ');
+      console.log(`${methods} ${endpoint.path}`);
+    });
+    
     // Start the server
-    app.listen(PORT, () => {
-      console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Server accessible at http://localhost:${PORT}`);
+      // Try to get local network IP for easier mobile testing
+      try {
+        const os = require('os');
+        const networkInterfaces = os.networkInterfaces();
+        
+        // Find an IPv4 address
+        let ipAddress;
+        Object.keys(networkInterfaces).forEach(ifname => {
+          networkInterfaces[ifname].forEach(iface => {
+            if (iface.family === 'IPv4' && !iface.internal) {
+              ipAddress = iface.address;
+            }
+          });
+        });
+        
+        if (ipAddress) {
+          console.log(`For mobile devices, use: http://${ipAddress}:${PORT}`);
+        }
+      } catch (err) {
+        console.log('Could not determine local IP address');
+      }
     });
   } catch (error) {
     console.error(`Error starting server: ${error.message}`);

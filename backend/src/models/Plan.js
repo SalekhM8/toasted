@@ -9,7 +9,8 @@ const exerciseSchema = new mongoose.Schema({
   progression: String,
   tempo: String,
   rest: String,
-  cues: [String]
+  cues: [String],
+  alternativeExerciseNames: { type: [String], default: [] }
 });
 
 const workoutDaySchema = new mongoose.Schema({
@@ -100,7 +101,86 @@ const mealSchema = new mongoose.Schema({
   // Track whether this meal has been customized by the user
   isCustomized: { type: Boolean, default: false },
   // Track when this meal was last modified
-  lastModified: { type: Date }
+  lastModified: { type: Date },
+  
+  // NEW FIELDS FOR ADVANCED MEAL MATCHING
+  
+  // Tags for nutritional properties (enables filtering by nutritional focus)
+  nutritionalTags: [{
+    type: String,
+    enum: [
+      'high-protein', 'low-protein',
+      'high-carb', 'low-carb',
+      'high-fat', 'low-fat',
+      'high-fiber', 'low-sodium',
+      'high-iron', 'high-calcium',
+      'vitamin-rich', 'antioxidant-rich',
+      'low-glycemic', 'high-omega3'
+    ]
+  }],
+  
+  // Tags for health conditions (enables filtering by health suitability)
+  suitableFor: [{
+    type: String,
+    enum: [
+      'diabetes-friendly', 'heart-healthy',
+      'anti-inflammatory', 'low-fodmap',
+      'gerd-friendly', 'iron-rich',
+      'vitamin-d-rich', 'b12-rich',
+      'calcium-rich', 'zinc-rich',
+      'low-cholesterol', 'low-triglycerides'
+    ]
+  }],
+  
+  // Tags for dietary restrictions (enables filtering by diet type)
+  dietaryTags: [{
+    type: String,
+    enum: [
+      'vegetarian', 'vegan',
+      'pescatarian', 'gluten-free',
+      'dairy-free', 'nut-free',
+      'egg-free', 'soy-free',
+      'keto-friendly', 'paleo-friendly',
+      'halal', 'kosher'
+    ]
+  }],
+  
+  // Cuisine type for filtering by cuisine preference
+  cuisine: {
+    type: String,
+    enum: [
+      'american', 'italian', 'mexican',
+      'asian', 'indian', 'mediterranean',
+      'middle-eastern', 'thai', 'japanese',
+      'french', 'korean', 'spanish',
+      'fusion', 'international'
+    ]
+  },
+  
+  // Preparation difficulty and time requirements
+  preparation: {
+    difficulty: {
+      type: String,
+      enum: ['beginner', 'intermediate', 'advanced'],
+      default: 'beginner'
+    },
+    time: {
+      type: Number, // in minutes
+      min: 5,
+      max: 180
+    },
+    mealPrepFriendly: {
+      type: Boolean,
+      default: false
+    }
+  },
+  
+  // Budget level indicator
+  budgetTier: {
+    type: String,
+    enum: ['budget', 'moderate', 'premium'],
+    default: 'moderate'
+  }
 });
 
 const dietDaySchema = [mealSchema];
@@ -124,6 +204,7 @@ const userPlanSchema = new mongoose.Schema({
   workoutPlanId: { type: String, required: false, ref: 'WorkoutPlan' },
   dietPlanId: { type: String, required: false, ref: 'DietPlan' },
   customDietPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'CustomDietPlan' },
+  customWorkoutPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'CustomWorkoutPlan' },
   startDate: { type: Date, required: true },
   progress: {
     completedWorkouts: [Date],

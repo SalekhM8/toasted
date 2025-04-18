@@ -207,10 +207,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      await Promise.all([
-        AsyncStorage.removeItem('userToken'),
-        AsyncStorage.removeItem('userData')
-      ]);
+      // Clear all authentication and plan-related data from storage
+      const keysToRemove = [
+        'userToken', 
+        'userData',
+        'cachedTodayPlan',
+        'lastPlanRefresh',
+        'redirectHistory',
+        'cachedPlanUserId'
+      ];
+      
+      await Promise.all(keysToRemove.map(key => AsyncStorage.removeItem(key)));
+      console.log('Cleared all user data and cached plans');
+      
       authService.setAuthHeader(null);
       dispatch({ type: 'LOGOUT' });
     }

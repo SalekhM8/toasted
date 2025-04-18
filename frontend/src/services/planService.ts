@@ -11,7 +11,8 @@ let planCacheExpiry = 0;
 // Types for the service
 interface PlanSelection {
   workoutPlanId: string;
-  dietPlanId: string;
+  dietPlanId?: string; // Make optional so we can use customDietPlanId instead
+  customDietPlanId?: string; // Add support for custom diet plan ID
   startDate: Date;
 }
 
@@ -105,8 +106,11 @@ export const planService = {
       if (!forceRefresh) {
         const lastRefreshStr = await AsyncStorage.getItem('lastPlanRefresh');
         const cachedPlan = await AsyncStorage.getItem('cachedTodayPlan');
+        const currentUserId = await this.getCurrentUserId();
+        const cachedUserId = await AsyncStorage.getItem('cachedPlanUserId');
         
-        if (lastRefreshStr && cachedPlan) {
+        // Only use cached plan if it belongs to the current user
+        if (lastRefreshStr && cachedPlan && currentUserId && cachedUserId === currentUserId) {
           const lastRefresh = parseInt(lastRefreshStr, 10);
           const now = Date.now();
           
@@ -123,14 +127,19 @@ export const planService = {
           }
           console.log(`Cache expired (${now - lastRefresh}ms old), fetching fresh data`);
         } else {
-          console.log('Cache not found, fetching fresh data');
+          console.log('Cache not found or belongs to different user, fetching fresh data');
         }
       } else {
         console.log('Force refresh requested, bypassing cache');
       }
       
-      // Fetch fresh data from API
-      const url = `${API_BASE_URL}/plans/today?t=${Date.now()}`;
+      // Get client's local date in ISO format for the backend
+      const clientDate = new Date();
+      const clientDateISO = clientDate.toISOString();
+      console.log(`Client local date: ${clientDateISO}`);
+      
+      // Fetch fresh data from API, including client's local date
+      const url = `${API_BASE_URL}/plans/today?t=${Date.now()}&clientDate=${encodeURIComponent(clientDateISO)}`;
       console.log(`Fetching plan from: ${url}`);
       
       const response = await axios.get(url, {
@@ -145,29 +154,53 @@ export const planService = {
           console.log(`DEBUG - getTodaysPlan - API Response - First meal calories: ${plan.meals[0].calories}`);
         }
         
-        // Cache the response
+        // Cache the response with the current user ID
         console.log('Caching new plan data');
+        const currentUserId = await this.getCurrentUserId();
         await AsyncStorage.setItem('cachedTodayPlan', JSON.stringify(plan));
         await AsyncStorage.setItem('lastPlanRefresh', Date.now().toString());
+        await AsyncStorage.setItem('cachedPlanUserId', currentUserId || '');
         
         console.log(`Plan fetched successfully (ID: ${requestId})`);
         return plan;
       } else if (response.status === 404) {
         // New user, no plan yet
         console.log('No plan found for user (new user)');
+        // Clear any existing cached plan to prevent cross-user contamination
+        await AsyncStorage.removeItem('cachedTodayPlan');
+        await AsyncStorage.removeItem('lastPlanRefresh');
+        await AsyncStorage.removeItem('cachedPlanUserId');
         return null;
       }
       
       console.log(`Unexpected response fetching plan: ${response.status}`);
       return null;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching today\'s plan:', error);
-      // If network error, try to use cached data even if it's stale
+      
+      // Check if this is a 404 error (user has no plan)
+      if (error.response && error.response.status === 404) {
+        console.log('No plan found for user (404 response)');
+        // Clear any existing cached plan to prevent cross-user contamination
+        await AsyncStorage.removeItem('cachedTodayPlan');
+        await AsyncStorage.removeItem('lastPlanRefresh');
+        await AsyncStorage.removeItem('cachedPlanUserId');
+        return null;
+      }
+      
+      // Only for network errors, try to use cached data if available
       try {
         const cachedPlan = await AsyncStorage.getItem('cachedTodayPlan');
-        if (cachedPlan) {
-          console.log('Network error, using stale cached data');
+        const currentUserId = await this.getCurrentUserId();
+        const cachedUserId = await AsyncStorage.getItem('cachedPlanUserId');
+        
+        // Only use cached plan if it belongs to the current user
+        if (cachedPlan && currentUserId && cachedUserId === currentUserId) {
+          console.log('Network error, using stale cached data for current user');
           return JSON.parse(cachedPlan);
+        } else {
+          console.log('No valid cached plan found for current user');
+          return null;
         }
       } catch (cacheError) {
         console.error('Error reading from cache:', cacheError);
@@ -176,22 +209,81 @@ export const planService = {
     }
   },
 
-  async getWeekPlan() {
+  async getWeekPlan(forceRefresh = false): Promise<any[]> {
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch(`${API_BASE_URL}/plans/week`, {
+      if (!token) {
+        console.log('No token found for week plan fetch');
+        return [];
+      }
+      
+      // Check if we have cached data and it's recent enough (unless forceRefresh)
+      if (!forceRefresh) {
+        const lastRefreshStr = await AsyncStorage.getItem('lastWeekPlanRefresh');
+        const cachedPlan = await AsyncStorage.getItem('cachedWeekPlan');
+        const currentUserId = await this.getCurrentUserId();
+        const cachedUserId = await AsyncStorage.getItem('cachedWeekPlanUserId');
+        
+        // Only use cached plan if it belongs to the current user
+        if (lastRefreshStr && cachedPlan && currentUserId && cachedUserId === currentUserId) {
+          const lastRefresh = parseInt(lastRefreshStr, 10);
+          const now = Date.now();
+          
+          // Use cache if it's less than 60 seconds old
+          if (now - lastRefresh < 60000) {
+            console.log(`Using cached week plan data, timestamp: ${lastRefresh}`);
+            return JSON.parse(cachedPlan);
+          }
+          console.log(`Week plan cache expired (${now - lastRefresh}ms old), fetching fresh data`);
+        } else {
+          console.log('Week plan cache not found or belongs to different user, fetching fresh data');
+        }
+      } else {
+        console.log('Force refresh requested for week plan, bypassing cache');
+      }
+      
+      // Get client's local date in ISO format for the backend
+      const clientDate = new Date();
+      const clientDateISO = clientDate.toISOString();
+      console.log(`Client local date for week plan: ${clientDateISO}`);
+      
+      // Force a unique URL to prevent caching issues
+      const url = `${API_BASE_URL}/plans/week?t=${Date.now()}&clientDate=${encodeURIComponent(clientDateISO)}`;
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch week plan');
+        console.error(`Week plan fetch failed with status: ${response.status}`);
+        throw new Error(`Failed to fetch week plan: ${response.status}`);
       }
-
-      return response.json();
+      
+      const data = await response.json();
+      
+      // Cache the response with the current user ID
+      console.log('Caching new week plan data');
+      const currentUserId = await this.getCurrentUserId();
+      await AsyncStorage.setItem('cachedWeekPlan', JSON.stringify(data));
+      await AsyncStorage.setItem('lastWeekPlanRefresh', Date.now().toString());
+      await AsyncStorage.setItem('cachedWeekPlanUserId', currentUserId || '');
+      
+      return data;
     } catch (error) {
-      console.error('Error in getWeekPlan:', error);
+      console.error('Error fetching week plan:', error);
+      
+      // Try to use cached data if available
+      try {
+        const cachedPlan = await AsyncStorage.getItem('cachedWeekPlan');
+        if (cachedPlan) {
+          console.log('Network error, using stale cached data for week plan');
+          return JSON.parse(cachedPlan);
+        }
+      } catch (cacheError) {
+        console.error('Error reading from cache:', cacheError);
+      }
+      
       throw error;
     }
   },
@@ -199,20 +291,36 @@ export const planService = {
   async completeWorkout(date: Date) {
     try {
       const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        console.error('No auth token available for completeWorkout');
+        throw new Error('You must be logged in');
+      }
+      
+      console.log(`Making API request to mark workout complete: ${API_BASE_URL}/plans/complete/workout`);
+      console.log('With date:', date.toISOString());
+      
       const response = await fetch(`${API_BASE_URL}/plans/complete/workout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ date })
+        body: JSON.stringify({ date: date.toISOString() })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to mark workout as complete');
+        const errorText = await response.text();
+        console.error('Complete workout error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`Failed to mark workout as complete: ${response.status} ${response.statusText}`);
       }
 
-      return response.json();
+      const data = await response.json();
+      console.log('Complete workout response:', data);
+      return data;
     } catch (error) {
       console.error('Error in completeWorkout:', error);
       throw error;
@@ -222,20 +330,36 @@ export const planService = {
   async completeMeal(date: Date, mealNumber: number) {
     try {
       const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        console.error('No auth token available for completeMeal');
+        throw new Error('You must be logged in');
+      }
+      
+      console.log(`Making API request to mark meal complete: ${API_BASE_URL}/plans/complete/meal`);
+      console.log('With data:', { date: date.toISOString(), mealNumber });
+      
       const response = await fetch(`${API_BASE_URL}/plans/complete/meal`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ date, mealNumber })
+        body: JSON.stringify({ date: date.toISOString(), mealNumber })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to mark meal as complete');
+        const errorText = await response.text();
+        console.error('Complete meal error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`Failed to mark meal as complete: ${response.status} ${response.statusText}`);
       }
 
-      return response.json();
+      const data = await response.json();
+      console.log('Complete meal response:', data);
+      return data;
     } catch (error) {
       console.error('Error in completeMeal:', error);
       throw error;
@@ -243,7 +367,7 @@ export const planService = {
   },
 
   // Add this to your planService object
-  modifyPlan: async (data: { workoutPlanId?: string; dietPlanId?: string }) => {
+  modifyPlan: async (data: { workoutPlanId?: string; dietPlanId?: string; customDietPlanId?: string }) => {
     try {
       const token = await AsyncStorage.getItem('userToken');
       const response = await fetch(`${API_BASE_URL}/plans/select`, {
@@ -712,6 +836,21 @@ export const planService = {
     } catch (error) {
       console.error("Error during strong refresh:", error);
       throw new Error(`Strong refresh failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  },
+
+  // Helper function to get the current user ID
+  async getCurrentUserId(): Promise<string | null> {
+    try {
+      const userDataStr = await AsyncStorage.getItem('userData');
+      if (userDataStr) {
+        const userData = JSON.parse(userDataStr);
+        return userData._id || null;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting current user ID:', error);
+      return null;
     }
   },
 };

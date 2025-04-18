@@ -16,14 +16,16 @@ export type BottomTabParamList = {
     forceRefresh?: boolean,
     directPlan?: DayPlan,
     swappedMealInfo?: SwappedMealInfo,
-    mealUpdated?: string
+    mealUpdated?: string,
+    timestamp?: number
   };
   Schedule: undefined | {
     refresh?: boolean | number,
     forceRefresh?: boolean,
     swappedMealInfo?: SwappedMealInfo,
     dayIndex?: number,
-    mealUpdated?: string
+    mealUpdated?: string,
+    timestamp?: number
   };
   Tracker: undefined;
   Profile: undefined;
@@ -54,8 +56,19 @@ export type RootStackParamList = {
   Loading: undefined;
   Login: undefined;
   Register: undefined;
-  PlanSelection: undefined;
-  MainTabs: NavigatorScreenParams<BottomTabParamList> | { initialPlan?: DayPlan };
+  PlanSelection: undefined | {
+    customPreferences?: any;
+    fromAdvancedQuestionnaire?: boolean;
+    customPlanCreated?: boolean;
+    customPlanId?: string;
+    timestamp?: number;
+    fallbackMode?: boolean;
+  };
+  MainTabs: NavigatorScreenParams<BottomTabParamList> | { 
+    initialPlan?: DayPlan,
+    timestamp?: number
+  };
+  AdvancedPlanQuestionnaire: undefined;
   ShoppingList: undefined;
   MealSwap: MealSwapScreenParams;
   MealEditor: MealEditorScreenParams;

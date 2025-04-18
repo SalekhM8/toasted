@@ -7,6 +7,7 @@ import LoginScreen from './src/screens/auth/LoginScreen';
 import LoadingScreen from './src/screens/common/LoadingScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import PlanSelectionScreen from './src/screens/PlanSelectionScreen';
+import AdvancedPlanQuestionnaire from './src/screens/AdvancedPlanQuestionnaire';
 import AppNavigator from './src/navigation/AppNavigator';
 import { RootStackParamList } from './src/types/navigation.types';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -30,6 +31,7 @@ export default function App() {
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="PlanSelection" component={PlanSelectionScreen} />
+            <Stack.Screen name="AdvancedPlanQuestionnaire" component={AdvancedPlanQuestionnaire} />
             <Stack.Screen name="MainTabs" component={AppNavigator} />
           </Stack.Navigator>
         </NavigationContainer>

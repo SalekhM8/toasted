@@ -54,6 +54,10 @@ const UNIT_CONVERSIONS: Record<string, number> = {
   'pint': 0.568261, // pints to L
   'quart': 1.13652, // quarts to L
   'gallon': 4.54609, // gallons to L
+  'tbsp': 0.015,   // tablespoons to L
+  'tsp': 0.005,    // teaspoons to L
+  'dash': 0.0005,  // dash to L
+  'pinch': 0.0001, // pinch to L
   
   // Count (no conversion)
   'item': 1,
@@ -62,6 +66,7 @@ const UNIT_CONVERSIONS: Record<string, number> = {
   'pack': 1,
   'can': 1,
   'bottle': 1,
+  'clove': 1,     // Add clove as a count unit
   '': 1 // Default for empty unit
 };
 
@@ -80,8 +85,12 @@ const getMeasurementCategory = (unit: string): 'WEIGHT' | 'VOLUME' | 'COUNT' => 
     return 'WEIGHT';
   }
   
-  if (['ml', 'l', 'cl', 'fl oz', 'cup', 'pint', 'quart', 'gallon', 'milliliter', 'milliliters', 'liter', 'liters', 'fluid ounce', 'fluid ounces'].includes(unit)) {
+  if (['ml', 'l', 'cl', 'fl oz', 'cup', 'pint', 'quart', 'gallon', 'milliliter', 'milliliters', 'liter', 'liters', 'fluid ounce', 'fluid ounces', 'tbsp', 'tablespoon', 'tablespoons', 'tsp', 'teaspoon', 'teaspoons', 'dash', 'pinch'].includes(unit)) {
     return 'VOLUME';
+  }
+  
+  if (['item', 'piece', 'slice', 'pack', 'can', 'bottle', 'each', 'clove', 'cloves'].includes(unit)) {
+    return 'COUNT';
   }
   
   return 'COUNT';
@@ -122,7 +131,15 @@ const normalizeUnit = (unit: string | null): string => {
     'bottles': 'bottle',
     'items': 'item',
     'each': 'item',
-    'ea': 'item'
+    'ea': 'item',
+    'tablespoon': 'tbsp',
+    'tablespoons': 'tbsp',
+    'teaspoon': 'tsp',
+    'teaspoons': 'tsp',
+    'dashes': 'dash',
+    'pinches': 'pinch',
+    'clove': 'clove',
+    'cloves': 'clove'
   };
   
   return unitMappings[unit] || unit;
@@ -290,23 +307,112 @@ const averagePrices: Record<string, { price: number, category: 'WEIGHT' | 'VOLUM
 
 // Improved helper function to estimate price based on ingredient
 const estimatePrice = (ingredient: Ingredient): number => {
-  // Extract ingredient info
-  const name = ingredient.name.toLowerCase().trim();
-  let quantity = ingredient.quantity !== null ? ingredient.quantity : 1;
-  let unit = ingredient.unit || '';
+  const name = ingredient.name?.toLowerCase() || '';
+  const quantity = ingredient.quantity !== null ? parseFloat(ingredient.quantity.toString()) : 1;
+  const unit = ingredient.unit?.toLowerCase() || '';
   
-  // Apply minimum/maximum quantity sanity checks
-  if (quantity < 0.01 && unit !== 'item') quantity = 0.01; // Prevent extremely small quantities
-  if (quantity > 50 && unit !== 'item') quantity = 50; // Cap unreasonably large quantities
-  
-  // Convert to standard unit (kg for weight, L for volume, item for count)
+  // Convert to standard unit for consistent calculation
   const { quantity: standardQuantity, standardUnit } = convertToStandardUnit(quantity, unit);
   
-  // For spices and herbs, if the quantity is very small, use a minimum price
-  if ((name.includes('spice') || name.includes('herb') || name.includes('seasoning')) && 
-      standardQuantity < 0.05 && 
-      (standardUnit === STANDARD_UNITS.WEIGHT)) {
-    return 0.50; // Minimum £0.50 for small amounts of spices/herbs
+  // Check for special cases where we need custom pricing
+  
+  // Special case for garlic cloves - often over-priced
+  if (name.includes('garlic') && name.includes('clove')) {
+    // A whole garlic bulb has ~10-12 cloves and costs around £0.50
+    // So each clove should cost about £0.05
+    return Math.max(quantity * 0.05, 0.05);
+  }
+  
+  // Special case for bell peppers (red, green, yellow)
+  if ((name.includes('bell pepper') || name.includes('pepper')) && 
+      (name.includes('red') || name.includes('green') || name.includes('yellow'))) {
+    // Individual bell peppers should cost about £0.80 each
+    if (standardUnit === STANDARD_UNITS.COUNT) {
+      return quantity * 0.80;
+    }
+  }
+
+  // Special handling for small count items that may be parts of larger items
+  const smallCountItems = [
+    { name: 'clove', parentItem: 'garlic', parentPrice: 0.50, itemsPerParent: 10 },
+    { name: 'slice', parentItem: 'bread', parentPrice: 1.10, itemsPerParent: 20 },
+    { name: 'leaf', parentItem: 'basil', parentPrice: 1.50, itemsPerParent: 20 },
+    { name: 'sprig', parentItem: 'herb', parentPrice: 1.50, itemsPerParent: 15 }
+  ];
+  
+  for (const item of smallCountItems) {
+    if (name.includes(item.name) && (name.includes(item.parentItem) || 
+        (item.name === 'clove' && name === 'clove'))) { // Special case for just "clove"
+      const pricePerItem = item.parentPrice / item.itemsPerParent;
+      return Math.max(quantity * pricePerItem, 0.05); // Minimum price of £0.05
+    }
+  }
+  
+  // Check for specific vegetables that should be priced individually
+  const individualVegetables = [
+    { name: 'pepper', price: 0.80 },
+    { name: 'bell pepper', price: 0.80 },
+    { name: 'onion', price: 0.30 },
+    { name: 'garlic bulb', price: 0.50 },
+    { name: 'carrot', price: 0.15 },
+    { name: 'tomato', price: 0.25 },
+  ];
+  
+  for (const veg of individualVegetables) {
+    if (name.includes(veg.name) && standardUnit === STANDARD_UNITS.COUNT) {
+      return Math.max(quantity * veg.price, 0.05);
+    }
+  }
+
+  // For spices, herbs, and oils if the quantity is very small, use a more accurate price calculation
+  const smallQuantityIngredients = [
+    'oil', 'olive oil', 'vegetable oil', 'sesame oil', 'coconut oil',
+    'vinegar', 'balsamic vinegar', 'apple cider vinegar',
+    'honey', 'maple syrup', 'soy sauce', 'fish sauce', 'oyster sauce',
+    'worcestershire sauce', 'hot sauce', 'sriracha', 'tabasco',
+    'extract', 'vanilla extract', 'almond extract'
+  ];
+  
+  // Check if this is a small quantity ingredient
+  const isSmallQuantityIngredient = smallQuantityIngredients.some(item => 
+    name.includes(item) || item.includes(name)
+  );
+  
+  // For spices, herbs, and oils if the quantity is very small, use a more accurate price calculation
+  if (((name.includes('spice') || name.includes('herb') || name.includes('seasoning') || 
+       name.includes('salt') || name.includes('pepper') || isSmallQuantityIngredient) && 
+       standardQuantity < 0.05) && 
+      (standardUnit === STANDARD_UNITS.WEIGHT || standardUnit === STANDARD_UNITS.VOLUME)) {
+    
+    // For very small quantities, use a prorated minimum price
+    // This prevents things like "1 tablespoon of olive oil" costing as much as "1 liter of olive oil"
+    let basePrice = 0;
+    
+    // Look up the base price first
+    if (averagePrices[name]) {
+      basePrice = averagePrices[name].price;
+    } else {
+      // Try matching on parts of the name
+      for (const key of Object.keys(averagePrices)) {
+        if (name.includes(key) || key.includes(name)) {
+          basePrice = averagePrices[key].price;
+          break;
+        }
+      }
+      // If still no match, use defaults
+      if (basePrice === 0) {
+        if (name.includes('oil')) basePrice = 8.00; // Default oil price
+        else if (name.includes('spice') || name.includes('herb')) basePrice = 2.50; // Default spice price
+        else basePrice = 1.00; // Default for unknown small quantity items
+      }
+    }
+    
+    // Calculate a reasonable price based on proportion
+    // e.g., 1 tbsp (0.015L) of olive oil at £8/L = £0.12 instead of treating it as 1L
+    const reasonablePrice = basePrice * standardQuantity;
+    
+    // Enforce a minimum price to prevent ridiculously small prices
+    return Math.max(reasonablePrice, 0.10);
   }
   
   // Try to find exact match first
@@ -347,7 +453,7 @@ const estimatePrice = (ingredient: Ingredient): number => {
     // Check if ingredient name contains the key or vice versa
     if (cleanName.includes(key) || key.includes(cleanName)) {
       // Calculate a similarity score based on length ratio
-      const similarity = key.length / Math.max(key.length, cleanName.length);
+      const similarity = Math.min(key.length / cleanName.length, cleanName.length / key.length);
       
       if (similarity > highestSimilarity) {
         highestSimilarity = similarity;
@@ -356,12 +462,13 @@ const estimatePrice = (ingredient: Ingredient): number => {
     }
   }
   
-  // If we found a good match
+  // If found a partial match, use its price
   if (bestMatch && highestSimilarity > 0.5) {
     const { price, category, commonUnit } = averagePrices[bestMatch];
     
-    // Handle mismatched units like before
+    // If category doesn't match the standard unit, convert appropriately
     if (category === 'COUNT' && standardUnit !== STANDARD_UNITS.COUNT) {
+      // Similar to the exact match logic above
       const estimatedCount = Math.ceil(standardQuantity / 0.2);
       return price * estimatedCount;
     }
@@ -369,16 +476,24 @@ const estimatePrice = (ingredient: Ingredient): number => {
     return price * standardQuantity;
   }
   
-  // Last resort: use category-based default prices
-  const category = getMeasurementCategory(normalizeUnit(unit));
+  // Fallback to category-based estimation
+  let defaultPrice = 5.0; // Default price per kg/L/item
   
-  if (category === 'WEIGHT') {
-    return 5.00 * standardQuantity; // £5 per kg as default for weight items
-  } else if (category === 'VOLUME') {
-    return 2.00 * standardQuantity; // £2 per liter as default for volume items
-  } else {
-    return 1.50 * quantity; // £1.50 per item as default
+  // Set default price based on ingredient type
+  if (name.includes('meat') || name.includes('beef') || name.includes('chicken') || 
+      name.includes('pork') || name.includes('fish') || name.includes('seafood')) {
+    defaultPrice = 10.0; // Meat/fish is expensive
+  } else if (name.includes('cheese') || name.includes('dairy')) {
+    defaultPrice = 8.0; // Dairy products
+  } else if (name.includes('fruit') || name.includes('vegetable') || name.includes('produce')) {
+    defaultPrice = 3.0; // Produce
+  } else if (name.includes('oil') || name.includes('vinegar')) {
+    defaultPrice = 5.0; // Oils and vinegars
+  } else if (name.includes('spice') || name.includes('herb') || name.includes('seasoning')) {
+    defaultPrice = 2.0; // Spices and herbs
   }
+  
+  return defaultPrice * standardQuantity;
 };
 
 interface Ingredient {
@@ -586,7 +701,8 @@ const ShoppingListScreen = () => {
     
     // Regular expression to match common quantity patterns
     // Matches patterns like "2 kg", "0.5 cups", "1/2 pound", "250g", "3 large", etc.
-    const quantityRegex = /(\d+\/\d+|\d+\.\d+|\d+)\s*(g|kg|oz|lb|ml|l|cup|cups|tbsp|tsp|pound|pounds|ounce|ounces|tablespoon|teaspoon|tablespoons|teaspoons|pint|quart|gallon)?/i;
+    // Also now supports "tbsp", "tsp" and common cooking measurements
+    const quantityRegex = /(\d+\/\d+|\d+\.\d+|\d+)\s*(g|kg|oz|lb|ml|l|cup|cups|tbsp|tsp|tablespoon|tablespoons|teaspoon|teaspoons|pound|pounds|ounce|ounces|pint|quart|gallon|dash|pinch)?/i;
     
     const match = text.match(quantityRegex);
     
@@ -603,12 +719,23 @@ const ShoppingListScreen = () => {
       }
       
       // If unit is attached directly to the number (like "250g"), extract it
-      if (!unit && text.match(/\d+(g|kg|oz|lb|ml|l)/i)) {
-        const unitMatch = text.match(/\d+(g|kg|oz|lb|ml|l)/i);
+      if (!unit && text.match(/\d+(g|kg|oz|lb|ml|l|tbsp|tsp)/i)) {
+        const unitMatch = text.match(/\d+(g|kg|oz|lb|ml|l|tbsp|tsp)/i);
         if (unitMatch && unitMatch[1]) {
           unit = unitMatch[1];
         }
       }
+      
+      // Check for common cooking measurement terms that might appear after the quantity
+      if (!unit) {
+        if (text.includes("tablespoon") || text.includes("tbsp")) unit = "tbsp";
+        else if (text.includes("teaspoon") || text.includes("tsp")) unit = "tsp";
+        else if (text.includes("dash")) unit = "dash";
+        else if (text.includes("pinch")) unit = "pinch";
+      }
+      
+      // Normalize the unit
+      unit = normalizeUnit(unit);
       
       return {
         ...ingredient,
@@ -654,6 +781,20 @@ const ShoppingListScreen = () => {
       // Add unique IDs and price estimates to each ingredient
       const enhancedResponse = { ...response };
       
+      // Keep track of total cost for logging/debugging
+      let totalEstimatedCost = 0;
+      
+      // Define type for high price ingredients
+      interface HighPriceIngredient {
+        name: string;
+        quantity: number | null;
+        unit: string | null;
+        price: number;
+        standardUnit: string;
+      }
+      
+      let highPriceIngredients: HighPriceIngredient[] = [];
+      
       Object.keys(enhancedResponse.shoppingList).forEach(category => {
         enhancedResponse.shoppingList[category] = enhancedResponse.shoppingList[category].map((ingredient: Ingredient) => {
           // First parse quantities and units from text if not already provided
@@ -661,6 +802,19 @@ const ShoppingListScreen = () => {
           
           // Then estimate price based on the parsed information
           const price = estimatePrice(parsedIngredient);
+          
+          // Track high-price ingredients for debugging
+          if (price > 10) {
+            highPriceIngredients.push({
+              name: parsedIngredient.name,
+              quantity: parsedIngredient.quantity,
+              unit: parsedIngredient.unit,
+              price: price,
+              standardUnit: convertToStandardUnit(parsedIngredient.quantity || 1, parsedIngredient.unit).standardUnit
+            });
+          }
+          
+          totalEstimatedCost += price;
           
           return {
             ...parsedIngredient,
@@ -674,6 +828,12 @@ const ShoppingListScreen = () => {
           };
         });
       });
+      
+      // Log for debugging
+      console.log(`Shopping list: Total estimated cost: £${totalEstimatedCost.toFixed(2)}`);
+      if (highPriceIngredients.length > 0) {
+        console.log('High price ingredients (>£10):', highPriceIngredients);
+      }
       
       setShoppingList(enhancedResponse);
       // Keep original copy for reset functionality
@@ -807,9 +967,39 @@ const ShoppingListScreen = () => {
         return ingredient.displayText;
       }
       
-      // Otherwise construct from name and quantity/unit if available
-      if (ingredient.quantity !== null && ingredient.unit) {
-        return `${ingredient.quantity} ${ingredient.unit} ${ingredient.name}`;
+      // Format quantities nicely
+      let displayQuantity = '';
+      if (ingredient.quantity !== null) {
+        // Format fractions nicely
+        if (ingredient.quantity === 0.25) displayQuantity = '¼';
+        else if (ingredient.quantity === 0.5) displayQuantity = '½';
+        else if (ingredient.quantity === 0.75) displayQuantity = '¾';
+        else if (ingredient.quantity === 0.33 || ingredient.quantity === 1/3) displayQuantity = '⅓';
+        else if (ingredient.quantity === 0.67 || ingredient.quantity === 2/3) displayQuantity = '⅔';
+        else displayQuantity = ingredient.quantity.toString();
+        
+        // For whole numbers, remove decimal point
+        if (displayQuantity.includes('.') && displayQuantity.endsWith('.0')) {
+          displayQuantity = displayQuantity.replace('.0', '');
+        }
+      }
+      
+      // Format unit nicely
+      let displayUnit = ingredient.unit || '';
+      
+      // Use proper abbreviations or symbols for common units
+      if (displayUnit === 'tbsp') displayUnit = 'Tbsp';
+      else if (displayUnit === 'tsp') displayUnit = 'tsp';
+      else if (displayUnit === 'g') displayUnit = 'g';
+      else if (displayUnit === 'kg') displayUnit = 'kg';
+      else if (displayUnit === 'ml') displayUnit = 'ml';
+      else if (displayUnit === 'l') displayUnit = 'L';
+      
+      // Combine quantity, unit, and name
+      if (displayQuantity && displayUnit) {
+        return `${displayQuantity} ${displayUnit} ${ingredient.name}`;
+      } else if (displayQuantity) {
+        return `${displayQuantity} ${ingredient.name}`;
       }
       
       // Just use the name if no quantity/unit

@@ -2321,7 +2321,7 @@ const generate4DayBodyweightWorkout = () => ([
       id: "wp_4day_gym",
       name: "4-Day Athletic Performance",
       frequency: "4day",
-      weeks: Array(6).fill().map((_, i) => generate3DayWorkout()[i % 2])
+      weeks: Array(6).fill().map((_, i) => generate4DayGymWorkout()[i % 2])
   },
   {
       id: "wp_4day_bw",

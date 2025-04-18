@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, StyleSheet, TextInput, Image } from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation.types';
 import { planService } from '../services/planService';
 import PlanDetailModal from '../components/plans/PlanDetailModal';
 import { Linking } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 interface DietPlan {
   id: string;
@@ -20,9 +21,11 @@ interface WorkoutPlan {
 }
 
 type PlanSelectionScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type PlanSelectionScreenRouteProp = RouteProp<RootStackParamList, 'PlanSelection'>;
 
 const PlanSelectionScreen = () => {
   const navigation = useNavigation<PlanSelectionScreenNavigationProp>();
+  const route = useRoute<PlanSelectionScreenRouteProp>();
   const [selectedDietPlan, setSelectedDietPlan] = useState<DietPlan | null>(null);
   const [selectedWorkoutPlan, setSelectedWorkoutPlan] = useState<WorkoutPlan | null>(null);
   const [loading, setLoading] = useState(false);
@@ -31,6 +34,10 @@ const PlanSelectionScreen = () => {
     plan: DietPlan | WorkoutPlan;
     type: 'diet' | 'workout';
   } | null>(null);
+  
+  // Check if user came from advanced questionnaire
+  const [hasCustomPlan, setHasCustomPlan] = useState(false);
+  const [customPlanName, setCustomPlanName] = useState('Your Custom Plan');
 
   // BMR Calculator States
   const [gender, setGender] = useState('male');
@@ -39,6 +46,75 @@ const PlanSelectionScreen = () => {
   const [age, setAge] = useState('');
   const [activityLevel, setActivityLevel] = useState('');
   const [bmr, setBmr] = useState<number | null>(null);
+
+  // Handle custom preferences from advanced questionnaire
+  useEffect(() => {
+    if (route.params?.fromAdvancedQuestionnaire && route.params?.customPreferences) {
+      // Set flag to indicate we have a custom plan
+      setHasCustomPlan(true);
+      
+      // Check if we have an actual custom plan ID from the questionnaire
+      if (route.params?.customPlanCreated && route.params?.customPlanId) {
+        console.log('Using custom plan ID from questionnaire:', route.params.customPlanId);
+        
+        // For the diet plan, create a special "custom" plan object
+        const customPlan: DietPlan = {
+          id: 'custom_plan', // We'll replace this with the actual ID when submitting
+          name: 'Your Tailored Diet Plan',
+          calories: 0 // This will be determined dynamically by the backend
+        };
+        
+        setSelectedDietPlan(customPlan);
+        
+        // Generate a descriptive plan name based on preferences
+        const prefs = route.params.customPreferences;
+        let planName = 'Tailored ';
+        
+        if (prefs.dietType) {
+          planName += prefs.dietType.charAt(0).toUpperCase() + prefs.dietType.slice(1) + ' ';
+        }
+        
+        if (prefs.goal) {
+          const goalName = prefs.goal.replace('_', ' ');
+          planName += goalName.charAt(0).toUpperCase() + goalName.slice(1) + ' ';
+        }
+        
+        planName += 'Plan';
+        setCustomPlanName(planName);
+      } else {
+        // Fallback to the old behavior - select a premade plan that matches preferences
+        const prefs = route.params.customPreferences;
+        
+        // Simple matching logic - in a real implementation this would be more sophisticated
+        let matchedCalories = 2500; // Default to maintenance
+        
+        if (prefs.goal === 'weight_loss') {
+          matchedCalories = 2000; // Gradual cut
+        } else if (prefs.goal === 'weight_gain' || prefs.goal === 'muscle_building') {
+          matchedCalories = 3000; // Gradual bulk
+        }
+        
+        // Find matching diet plan
+        const matchedPlan = dietPlans.find(plan => plan.calories === matchedCalories) || dietPlans[2];
+        setSelectedDietPlan(matchedPlan);
+        
+        // Generate a custom plan name based on preferences
+        let planName = 'Custom ';
+        
+        if (prefs.dietType) {
+          planName += prefs.dietType.charAt(0).toUpperCase() + prefs.dietType.slice(1) + ' ';
+        }
+        
+        if (prefs.goal) {
+          const goalName = prefs.goal.replace('_', ' ');
+          planName += goalName.charAt(0).toUpperCase() + goalName.slice(1) + ' ';
+        }
+        
+        planName += `Plan (${matchedCalories}kcal)`;
+        setCustomPlanName(planName);
+      }
+    }
+  }, [route.params]);
 
   const calculateBMR = () => {
     if (!weight || !height || !age || !activityLevel) {
@@ -104,17 +180,21 @@ const PlanSelectionScreen = () => {
       setLoading(true);
       setError(null);
       
-      console.log('Submitting plan selection:', {
-        workoutPlanId: selectedWorkoutPlan.id,
-        dietPlanId: selectedDietPlan.id,
-        startDate: new Date()
-      });
+      // Check if we're using a custom plan from the questionnaire
+      const customPlanId = route.params?.customPlanId;
+      const isCustomPlan = selectedDietPlan.id === 'custom_plan' && customPlanId;
       
-      await planService.selectPlans({
+      // Prepare the plan selection data
+      const planData = {
         workoutPlanId: selectedWorkoutPlan.id,
-        dietPlanId: selectedDietPlan.id,
+        dietPlanId: isCustomPlan ? undefined : selectedDietPlan.id, // Don't send dietPlanId if using custom plan
+        customDietPlanId: isCustomPlan ? customPlanId : undefined, // Send customDietPlanId if available
         startDate: new Date()
-      });
+      };
+      
+      console.log('Submitting plan selection:', planData);
+      
+      await planService.selectPlans(planData);
       
       console.log('Plan selection successful, navigating to MainTabs');
       navigation.reset({
@@ -132,6 +212,43 @@ const PlanSelectionScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container}>
+        {/* Advanced Plan Tailoring Entry Point */}
+        <View style={styles.advancedPlanCard}>
+          <View style={styles.advancedCardContent}>
+            <Text style={styles.advancedTitle}>Advanced Plan Tailoring</Text>
+            <Text style={styles.advancedSubtitle}>
+              Get a personalized meal plan based on your health conditions, dietary preferences, and lifestyle.
+            </Text>
+            
+            <TouchableOpacity 
+              style={styles.advancedButton}
+              onPress={() => navigation.navigate('AdvancedPlanQuestionnaire')}
+            >
+              <Text style={styles.advancedButtonText}>Start Personalization</Text>
+              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.advancedImageContainer}>
+            <Ionicons name="nutrition-outline" size={80} color="#FF0000" />
+          </View>
+        </View>
+        
+        {/* Display custom plan if coming from advanced questionnaire */}
+        {hasCustomPlan && (
+          <View style={styles.customPlanSection}>
+            <Text style={styles.sectionTitle}>Your Personalized Diet Plan</Text>
+            <View style={styles.customPlanCard}>
+              <Ionicons name="checkmark-circle" size={24} color="#FF0000" style={styles.customPlanIcon} />
+              <View style={styles.customPlanContent}>
+                <Text style={styles.customPlanName}>{customPlanName}</Text>
+                <Text style={styles.customPlanDescription}>
+                  Created based on your health conditions, dietary preferences, and lifestyle factors.
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+        
         {/* BMR Calculator Section */}
         <View style={styles.bmrSection}>
           <Text style={styles.sectionTitle}>Calculate Your Daily Calories</Text>
@@ -560,6 +677,83 @@ const styles = StyleSheet.create({
     color: '#FF0000',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  advancedPlanCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
+  },
+  advancedCardContent: {
+    flex: 2,
+    paddingRight: 12,
+  },
+  advancedTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#FF0000',
+  },
+  advancedSubtitle: {
+    fontSize: 15,
+    color: '#666666',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  advancedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF0000',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  advancedButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginRight: 8,
+  },
+  advancedImageContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  customPlanSection: {
+    marginBottom: 24,
+  },
+  customPlanCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF0F0',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#FFCCCC',
+    alignItems: 'center',
+  },
+  customPlanIcon: {
+    marginRight: 12,
+  },
+  customPlanContent: {
+    flex: 1,
+  },
+  customPlanName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  customPlanDescription: {
+    fontSize: 14,
+    color: '#666666',
   },
 });
 
