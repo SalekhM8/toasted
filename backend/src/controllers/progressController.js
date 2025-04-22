@@ -255,6 +255,75 @@ const progressController = {
         originalExercise: originalExerciseName,
         newExercise: swappedExerciseName
     });
+  }),
+
+  // New function to get completed exercises
+  getCompletedExercises: asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+    const { startDate, endDate } = req.query;
+    
+    // Validate date parameters if provided
+    const query = { userId };
+    
+    if (startDate) {
+      const parsedStartDate = new Date(startDate);
+      if (isNaN(parsedStartDate.getTime())) {
+        res.status(400);
+        throw new Error('Invalid startDate format. Please use ISO 8601 format (YYYY-MM-DD).');
+      }
+      query.workoutDate = { $gte: parsedStartDate };
+    }
+    
+    if (endDate) {
+      const parsedEndDate = new Date(endDate);
+      if (isNaN(parsedEndDate.getTime())) {
+        res.status(400);
+        throw new Error('Invalid endDate format. Please use ISO 8601 format (YYYY-MM-DD).');
+      }
+      
+      // If we already have a workoutDate query, add the endDate as $lte
+      if (query.workoutDate) {
+        query.workoutDate.$lte = parsedEndDate;
+      } else {
+        query.workoutDate = { $lte: parsedEndDate };
+      }
+    }
+    
+    // If no date parameters, default to retrieving the last 30 days
+    if (!startDate && !endDate) {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      query.workoutDate = { $gte: thirtyDaysAgo };
+    }
+
+    try {
+      const completedExercises = await WorkoutLog.find(query)
+        .sort({ workoutDate: -1 })
+        .lean(); // Use lean() for better performance
+      
+      // Format the response data to be more frontend-friendly
+      const formattedExercises = completedExercises.map(exercise => ({
+        id: exercise._id,
+        exerciseName: exercise.exerciseName,
+        date: exercise.workoutDate.toISOString(),
+        dateFormatted: exercise.workoutDate.toISOString().split('T')[0], // YYYY-MM-DD
+        weightLifted: exercise.weightLifted,
+        weightUnit: exercise.weightUnit,
+        repsCompleted: exercise.repsCompleted,
+        repsLeftInTank: exercise.repsLeftInTank,
+        painReported: exercise.painReported,
+        painNotes: exercise.painNotes
+      }));
+      
+      res.json({
+        count: formattedExercises.length,
+        exercises: formattedExercises
+      });
+    } catch (error) {
+      console.error('Error retrieving completed exercises:', error);
+      res.status(500);
+      throw new Error('Failed to retrieve completed exercises');
+    }
   })
 };
 

@@ -11,6 +11,26 @@ interface ExerciseLogPayload extends ExerciseLogData {
   workoutDate: string;
 }
 
+// Interface for completed exercise data returned from the backend
+interface CompletedExercise {
+  id: string;
+  exerciseName: string;
+  date: string;
+  dateFormatted: string;
+  weightLifted: number | null;
+  weightUnit: string | null;
+  repsCompleted: string | null;
+  repsLeftInTank: string;
+  painReported: boolean;
+  painNotes: string | null;
+}
+
+// Interface for the response from getCompletedExercises
+interface CompletedExercisesResponse {
+  count: number;
+  exercises: CompletedExercise[];
+}
+
 // Helper function for generating name-based alternatives
 const getNameBasedAlternatives = (exerciseName: string): string[] => {
   console.log(`Generating name-based alternatives for: ${exerciseName}`);
@@ -198,5 +218,30 @@ export const progressService = {
       console.error('Error recording exercise swap:', error);
       throw error;
     }
-  }
+  },
+
+  // Get completed exercises from the server
+  getCompletedExercises: async (startDate?: string, endDate?: string): Promise<CompletedExercisesResponse> => {
+    try {
+      let url = '/progress/exercises';
+      
+      // Add query parameters if dates are provided
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const queryString = params.toString();
+      if (queryString) url += `?${queryString}`;
+      
+      const response = await api.get<CompletedExercisesResponse>(url);
+      console.log(`Retrieved ${response.data.count} completed exercises`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching completed exercises:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        throw new Error(error.response.data?.message || 'Failed to fetch exercise history');
+      }
+      throw new Error('Could not fetch exercise history. Please try again later.');
+    }
+  },
 };

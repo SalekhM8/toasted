@@ -19,7 +19,7 @@ export interface ExerciseLogData {
   weightLifted: number | null;
   weightUnit: 'kg' | 'lbs';
   repsCompleted: number; 
-  repsLeftInTank: '0' | '1' | '2' | '3' | '4+' | 'couldn\'t complete';
+  repsLeftInTank: "Couldn't complete all reps" | "0 - reached failure" | "1" | "2" | "3" | "4+";
   painReported: boolean;
   painLocation?: string;
   notes?: string;
@@ -50,7 +50,7 @@ const ExerciseCompletionModal: React.FC<ExerciseCompletionModalProps> = ({
   const [weight, setWeight] = useState(previousWeight ? previousWeight.toString() : '');
   const [weightUnit, setWeightUnit] = useState<'kg' | 'lbs'>(previousWeightUnit || 'kg');
   const [repsCompleted, setRepsCompleted] = useState(targetReps.toString());
-  const [repsLeftInTank, setRepsLeftInTank] = useState<'0' | '1' | '2' | '3' | '4+' | 'couldn\'t complete'>('1');
+  const [repsLeftInTank, setRepsLeftInTank] = useState<"Couldn't complete all reps" | "0 - reached failure" | "1" | "2" | "3" | "4+">('1');
   const [painReported, setPainReported] = useState(false);
   const [painLocation, setPainLocation] = useState('');
   const [notes, setNotes] = useState('');
@@ -181,21 +181,28 @@ const ExerciseCompletionModal: React.FC<ExerciseCompletionModalProps> = ({
             <View style={styles.formGroup}>
               <Text style={styles.label}>Reps Left in Tank</Text>
               <View style={styles.buttonGroup}>
-                {['0', '1', '2', '3', '4+', 'couldn\'t complete'].map((option) => (
+                {[
+                  { value: "0 - reached failure", display: "0" },
+                  { value: "1", display: "1" },
+                  { value: "2", display: "2" },
+                  { value: "3", display: "3" },
+                  { value: "4+", display: "4+" },
+                  { value: "Couldn't complete all reps", display: "couldn't complete" }
+                ].map((option) => (
                   <TouchableOpacity
-                    key={option}
+                    key={option.value}
                     style={[
                       styles.repsButton,
-                      repsLeftInTank === option && styles.activeRepsButton
+                      repsLeftInTank === option.value && styles.activeRepsButton
                     ]}
-                    onPress={() => setRepsLeftInTank(option as any)}
+                    onPress={() => setRepsLeftInTank(option.value as any)}
                   >
                     <Text style={[
                       styles.repsButtonText,
-                      repsLeftInTank === option && styles.activeRepsButtonText,
-                      option === 'couldn\'t complete' && styles.cantCompleteText
+                      repsLeftInTank === option.value && styles.activeRepsButtonText,
+                      option.value === "Couldn't complete all reps" && styles.cantCompleteText
                     ]}>
-                      {option}
+                      {option.display}
                     </Text>
                   </TouchableOpacity>
                 ))}

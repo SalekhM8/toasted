@@ -5,7 +5,8 @@ const {
   getProgress, 
   logCompletion, 
   logExerciseCompletion,
-  swapExercise
+  swapExercise,
+  getCompletedExercises
 } = require('../controllers/progressController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -22,5 +23,6 @@ router.post('/progress/completion', protect, logCompletion);
 // New routes for workout tracking
 router.post('/progress/exercise', protect, logExerciseCompletion);
 router.post('/progress/swap-exercise', protect, swapExercise);
+router.get('/progress/exercises', protect, getCompletedExercises);
 
 module.exports = router;

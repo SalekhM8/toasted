@@ -22,6 +22,15 @@ import ExerciseSwapModal from '../../components/workout/ExerciseSwapModal';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation.types';
 import { Exercise, Meal } from '../../types/plan.types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../services/api';
+
+// Define interface for exercise log data with workoutDate
+interface ExerciseLogPayload extends ExerciseLogData {
+  exerciseName: string;
+  workoutDate: string;
+  createdAt?: string;
+}
 
 // Define Enhanced Exercise type (copied from HomeScreen)
 interface EnhancedExercise extends Exercise {
@@ -446,6 +455,19 @@ const ScheduleScreen = () => {
   // --- NEW HANDLERS for Exercise Modals --- 
 
   const handleOpenCompletionModal = (exercise: EnhancedExercise, dayIndex: number) => {
+    // Find the exercise index
+    const exerciseIndex = weekPlan?.[dayIndex]?.workout?.exercises.findIndex(ex => ex.name === exercise.name);
+    
+    // Guard clause - don't open modal for completed exercises
+    if (exerciseIndex !== undefined && exerciseIndex !== -1) {
+      const completedKey = getCompletedExerciseKey(dayIndex, exerciseIndex);
+      if (completedExercises.get(completedKey)) {
+        showToast(`${exercise.name} already completed for this day`);
+        return;
+      }
+    }
+    
+    // Continue with normal flow
     setSelectedExerciseInfo({ exercise, dayIndex });
     setCompletionModalVisible(true);
   };
@@ -472,17 +494,9 @@ const ScheduleScreen = () => {
     // Check if this exercise is already completed today
     const completedKey = getCompletedExerciseKey(dayIndex, exerciseIndex);
     if (completedExercises.get(completedKey)) {
-      Alert.alert(
-        "Already Completed", 
-        `You've already logged ${exercise.name} today! Want to log it again?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          { 
-            text: "Log Again", 
-            onPress: () => submitExerciseLog(logData, dayIndex, exercise, exerciseIndex, workoutDate)
-          }
-        ]
-      );
+      // Instead of allowing multiple logging, just show a message
+      showToast(`${exercise.name} is already completed for this day`);
+      handleCloseCompletionModal();
       return;
     }
     
@@ -499,15 +513,7 @@ const ScheduleScreen = () => {
     workoutDate: string
   ) => {
     try {
-      await progressService.logExerciseCompletion({ 
-        ...logData, 
-        exerciseName: exercise.name, // Use the displayed exercise name
-        workoutDate: workoutDate // Pass the specific date
-      });
-      showToast(`${exercise.name} log submitted!`);
-      handleCloseCompletionModal();
-      
-      // Update UI to show completion for this specific exercise instance
+      // Immediately update UI to show completion for this specific exercise instance
       const key = getCompletedExerciseKey(dayIndex, exerciseIndex);
       
       setCompletedExercises(prev => {
@@ -538,9 +544,53 @@ const ScheduleScreen = () => {
         
         return newMap;
       });
+      
+      // Store the completed exercise in AsyncStorage immediately for cross-screen persistence
+      const dateKey = workoutDate.split('T')[0]; // Get YYYY-MM-DD format
+      const completedExerciseKey = `completed_exercise_${exercise.name}_${dateKey}`;
+      await AsyncStorage.setItem(completedExerciseKey, 'true');
 
+      // Set a global flag in AsyncStorage to indicate exercise data was updated
+      await AsyncStorage.setItem('exerciseDataUpdated', 'true');
+      
+      // Close the modal immediately to improve user experience
+      handleCloseCompletionModal();
+      showToast(`${exercise.name} log submitted!`);
+
+      // THEN try to send to server (allowing app to work offline)
+      try {
+        await progressService.logExerciseCompletion({ 
+          ...logData, 
+          exerciseName: exercise.name, // Use the displayed exercise name
+          workoutDate: workoutDate // Pass the specific date
+        });
+        console.log(`Exercise ${exercise.name} log successfully sent to server`);
+      } catch (error) {
+        // If server submission fails, store the log locally for later sync
+        console.warn("Failed to submit exercise log to server (will retry later):", error);
+        const pendingLogsKey = 'pending_exercise_logs';
+        try {
+          // Get existing pending logs
+          const pendingLogsJson = await AsyncStorage.getItem(pendingLogsKey);
+          const pendingLogs = pendingLogsJson ? JSON.parse(pendingLogsJson) : [];
+          
+          // Add this log to pending logs
+          pendingLogs.push({
+            ...logData,
+            exerciseName: exercise.name,
+            workoutDate: workoutDate,
+            createdAt: new Date().toISOString()
+          });
+          
+          // Store updated pending logs
+          await AsyncStorage.setItem(pendingLogsKey, JSON.stringify(pendingLogs));
+          console.log(`Added log to pending_exercise_logs for later sync. Total pending: ${pendingLogs.length}`);
+        } catch (storageError) {
+          console.error("Error storing pending exercise log:", storageError);
+        }
+      }
     } catch (error) {
-      console.error("Error submitting exercise log from ScheduleScreen:", error);
+      console.error("Error handling exercise log from ScheduleScreen:", error);
       Alert.alert("Log Error", error instanceof Error ? error.message : "Could not submit log.");
     }
   };
@@ -607,6 +657,212 @@ const ScheduleScreen = () => {
        Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
      ]).start(() => { setToastVisible(false); });
    };
+
+  // Add a function to load completed exercises from AsyncStorage and backend
+  const loadCompletedExercises = async () => {
+    try {
+      if (!weekPlan) return;
+      
+      // Create a new Map for completed exercises
+      const newCompletedExercises = new Map<string, boolean>();
+      
+      // Step 1: Try to load from backend first (for logged-in users with network)
+      try {
+        // Get date range for the current week plan
+        const weekStartDate = weekPlan[0].date.toISOString().split('T')[0];
+        const weekEndDate = weekPlan[weekPlan.length - 1].date.toISOString().split('T')[0];
+        
+        console.log(`Fetching completed exercises for week: ${weekStartDate} to ${weekEndDate}`);
+        const backendData = await progressService.getCompletedExercises(weekStartDate, weekEndDate);
+        
+        if (backendData.exercises.length > 0) {
+          console.log(`Retrieved ${backendData.exercises.length} completed exercises from backend`);
+          
+          // Process backend data
+          weekPlan.forEach((day, dayIndex) => {
+            // Get date for this day
+            const dayDateStr = day.date.toISOString().split('T')[0];
+            
+            // Find completed exercises for this day
+            const todaysCompletedExercises = backendData.exercises
+              .filter(exercise => exercise.dateFormatted === dayDateStr)
+              .map(exercise => exercise.exerciseName);
+            
+            // If there are exercises for this day, check them against the plan
+            if (todaysCompletedExercises.length > 0 && day.workout) {
+              day.workout.exercises.forEach((exercise, exerciseIndex) => {
+                if (todaysCompletedExercises.includes(exercise.name)) {
+                  const key = getCompletedExerciseKey(dayIndex, exerciseIndex);
+                  newCompletedExercises.set(key, true);
+                }
+              });
+            }
+          });
+          
+          // Update AsyncStorage with backend data for offline use
+          for (const exercise of backendData.exercises) {
+            const completedExerciseKey = `completed_exercise_${exercise.exerciseName}_${exercise.dateFormatted}`;
+            await AsyncStorage.setItem(completedExerciseKey, 'true');
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to fetch completed exercises from backend, falling back to AsyncStorage:', error);
+        // Continue to AsyncStorage as fallback
+      }
+      
+      // Step 2: Get from AsyncStorage as fallback
+      // Get all AsyncStorage keys
+      const keys = await AsyncStorage.getAllKeys();
+      
+      // Filter for keys that match the format for completed exercises
+      const completedKeys = keys.filter(key => key.startsWith('completed_exercise_'));
+      
+      if (completedKeys.length > 0) {
+        // Get values for all completed exercise keys
+        const completedData = await AsyncStorage.multiGet(completedKeys);
+        
+        // Extract exercise names and dates from the keys
+        const completedExerciseInfo = completedData
+          .filter(([, value]) => value === 'true')
+          .map(([key]) => {
+            // Extract exercise name and date from key format: completed_exercise_ExerciseName_YYYY-MM-DD
+            const parts = key.split('_');
+            const dateStr = parts[parts.length - 1]; // Get the date part
+            // Remove 'completed', 'exercise', and date parts, keep the exercise name
+            const exerciseName = parts.slice(2, -1).join('_'); // Rejoin in case exercise name has underscores
+            
+            return { exerciseName, dateStr };
+          });
+        
+        // For each day in the week plan, check for completed exercises from AsyncStorage
+        weekPlan.forEach((day, dayIndex) => {
+          // Get date for this day
+          const dayDateStr = day.date.toISOString().split('T')[0];
+          
+          // Find completed exercises for this day
+          const todaysCompletedExercises = completedExerciseInfo
+            .filter(info => info.dateStr === dayDateStr)
+            .map(info => info.exerciseName);
+          
+          // If there are exercises for this day, check them against the plan
+          if (todaysCompletedExercises.length > 0 && day.workout) {
+            day.workout.exercises.forEach((exercise, exerciseIndex) => {
+              if (todaysCompletedExercises.includes(exercise.name)) {
+                const key = getCompletedExerciseKey(dayIndex, exerciseIndex);
+                newCompletedExercises.set(key, true);
+              }
+            });
+          }
+        });
+      }
+      
+      // Update state if we found completed exercises (from either source)
+      if (newCompletedExercises.size > 0) {
+        setCompletedExercises(newCompletedExercises);
+        console.log(`Loaded ${newCompletedExercises.size} completed exercises for the week`);
+      }
+    } catch (error) {
+      console.error('Error loading completed exercises for week:', error);
+    }
+  };
+
+  // Add an effect to check for updates when the screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      const checkForUpdates = async () => {
+        const exerciseDataUpdated = await AsyncStorage.getItem('exerciseDataUpdated');
+        if (exerciseDataUpdated === 'true') {
+          console.log('Exercise data updated in another screen, refreshing...');
+          await loadCompletedExercises();
+          await AsyncStorage.removeItem('exerciseDataUpdated');
+        }
+      };
+      
+      checkForUpdates();
+    }, [weekPlan])
+  );
+
+  // Also load completed exercises when the week plan is fetched
+  useEffect(() => {
+    if (weekPlan) {
+      loadCompletedExercises();
+    }
+  }, [weekPlan]);
+
+  // Function to sync pending logs when the app comes online
+  const syncPendingExerciseLogs = async () => {
+    try {
+      const pendingLogsKey = 'pending_exercise_logs';
+      const pendingLogsJson = await AsyncStorage.getItem(pendingLogsKey);
+      
+      if (!pendingLogsJson) return; // No pending logs
+      
+      const pendingLogs = JSON.parse(pendingLogsJson) as ExerciseLogPayload[];
+      if (!pendingLogs.length) return; // Empty array
+      
+      console.log(`Attempting to sync ${pendingLogs.length} pending exercise logs`);
+      
+      // Keep track of successfully synced logs to remove them later
+      const syncedLogIndices: number[] = [];
+      
+      // Try to sync each log
+      for (let i = 0; i < pendingLogs.length; i++) {
+        const log = pendingLogs[i];
+        
+        try {
+          await progressService.logExerciseCompletion(log);
+          syncedLogIndices.push(i);
+          console.log(`Successfully synced pending log for ${log.exerciseName} on ${log.workoutDate}`);
+        } catch (error) {
+          console.warn(`Failed to sync pending log ${i}, will retry later:`, error);
+          // Continue to next log
+        }
+      }
+      
+      // Remove successfully synced logs
+      if (syncedLogIndices.length > 0) {
+        // Remove logs in reverse order to not mess up indices
+        const remainingLogs = pendingLogs.filter((_: any, index: number) => !syncedLogIndices.includes(index));
+        
+        // Update AsyncStorage
+        if (remainingLogs.length === 0) {
+          await AsyncStorage.removeItem(pendingLogsKey);
+          console.log('All pending logs synced successfully');
+        } else {
+          await AsyncStorage.setItem(pendingLogsKey, JSON.stringify(remainingLogs));
+          console.log(`${syncedLogIndices.length} logs synced, ${remainingLogs.length} remain pending`);
+        }
+      }
+    } catch (error) {
+      console.error('Error syncing pending exercise logs:', error);
+    }
+  };
+
+  // Add useEffect to check for network connectivity and sync pending logs
+  useEffect(() => {
+    const syncIfOnline = async () => {
+      try {
+        // Check if network is available (simple check using a HEAD request to API)
+        try {
+          await fetch(API_BASE_URL, { method: 'HEAD' });
+          // If we get here, network is available
+          await syncPendingExerciseLogs();
+        } catch (e) {
+          console.log('Network unavailable, skipping sync');
+        }
+      } catch (error) {
+        console.warn('Error checking network status:', error);
+      }
+    };
+    
+    // Call immediately and then set up an interval
+    syncIfOnline();
+    
+    // Check every minute if the app is active
+    const intervalId = setInterval(syncIfOnline, 60000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
 
   if (loading) { // Check loading state first
     return (
@@ -690,74 +946,85 @@ const ScheduleScreen = () => {
                   <View style={styles.workoutSection}>
                     <Text style={styles.sectionTitle}>{day.workout.focus}</Text>
                     {day.workout.exercises.map((exercise, exerciseIndex) => {
-                       const completedKey = getCompletedExerciseKey(dayIndex, exerciseIndex);
-                       const isCompleted = completedExercises.get(completedKey) || false;
-                       return (
-                         <View key={exerciseIndex} style={styles.exercise}>
-                            {/* Exercise Header with Name and Actions */} 
-                            <View style={styles.exerciseHeader}>
-                              <Text style={styles.exerciseName}>
-                                 {exercise.name}
-                                 {exercise.isSwapped && <Text style={styles.swappedText}> (Swapped)</Text>}
-                              </Text>
-                              <View style={styles.exerciseActions}>
-                                 <TouchableOpacity onPress={() => handleOpenSwapModal(exercise, dayIndex)} style={styles.iconButton}>
+                      const completedKey = getCompletedExerciseKey(dayIndex, exerciseIndex);
+                      const isCompleted = completedExercises.get(completedKey) || false;
+                      return (
+                        <View key={exerciseIndex} style={[styles.exercise, isCompleted && styles.completedExerciseRow]}>
+                          {/* Exercise Header with Name and Actions */} 
+                          <View style={styles.exerciseHeader}>
+                            <Text style={styles.exerciseName}>
+                              {exercise.name}
+                              {exercise.isSwapped && <Text style={styles.swappedText}> (Swapped)</Text>}
+                            </Text>
+                            <View style={styles.exerciseActions}>
+                              {isCompleted ? (
+                                // For completed exercises, show a non-interactive completed indicator
+                                <View style={styles.completedIndicator}>
+                                  <Ionicons name="checkmark-circle" size={28} color="#4CAF50" />
+                                  <Text style={styles.completedText}>Completed</Text>
+                                </View>
+                              ) : (
+                                // For incomplete exercises, show the interactive buttons
+                                <>
+                                  <TouchableOpacity onPress={() => handleOpenSwapModal(exercise, dayIndex)} style={styles.iconButton}>
                                     <Ionicons name="swap-horizontal-outline" size={24} color="#FF0000" />
-                                 </TouchableOpacity>
-                                 <TouchableOpacity onPress={() => handleOpenCompletionModal(exercise, dayIndex)} style={styles.iconButton}>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity onPress={() => handleOpenCompletionModal(exercise, dayIndex)} style={styles.iconButton}>
                                     <Ionicons 
-                                       name={isCompleted ? "checkmark-circle" : "checkmark-circle-outline"} 
-                                       size={28} 
-                                       color={isCompleted ? "#4CAF50" : "#ccc"} 
+                                      name="checkmark-circle-outline" 
+                                      size={28} 
+                                      color="#ccc"
                                     />
-                                 </TouchableOpacity>
-                              </View>
-                           </View>
-                           
-                           {/* Target Sets/Reps */} 
-                           <Text style={styles.exerciseDetails}>Target: {exercise.sets} × {exercise.reps}</Text>
+                                  </TouchableOpacity>
+                                </>
+                              )}
+                            </View>
+                          </View>
+                          
+                          {/* Target Sets/Reps */} 
+                          <Text style={styles.exerciseDetails}>Target: {exercise.sets} × {exercise.reps}</Text>
 
-                           {/* Suggested Weight & Progression */} 
-                           {exercise.suggestedWeight !== null && (
-                             <Text style={styles.suggestionText}>
-                                Suggest: {exercise.suggestedWeight}{exercise.suggestedWeightUnit}
-                                {(exercise.previousWeight !== null && typeof exercise.suggestedWeight === 'number' && typeof exercise.previousWeight === 'number') && 
-                                 ` (${exercise.suggestedWeight >= exercise.previousWeight ? '+' : ''}${(exercise.suggestedWeight - exercise.previousWeight).toFixed(1)}${exercise.suggestedWeightUnit})`
-                                }
-                             </Text>
-                           )}
-                           
-                           {/* Pain Warning */} 
-                           {exercise.painReportedLastTime && (
-                             <View style={styles.painWarningContainer}>
-                               <Ionicons name="warning-outline" size={16} color="#FFA500" />
-                               <Text style={styles.painWarningText}>
-                                 Pain reported last time. Consider swapping this exercise.
-                               </Text>
-                               <TouchableOpacity 
-                                 style={styles.swapSuggestionButton}
-                                 onPress={() => handleOpenSwapModal(exercise, dayIndex)}
-                               >
-                                 <Text style={styles.swapSuggestionButtonText}>Swap</Text>
-                               </TouchableOpacity>
-                             </View>
-                           )}
+                          {/* Suggested Weight & Progression - Only show for non-completed exercises */}
+                          {!isCompleted && exercise.suggestedWeight !== null && (
+                            <Text style={styles.suggestionText}>
+                              Suggest: {exercise.suggestedWeight}{exercise.suggestedWeightUnit}
+                              {(exercise.previousWeight !== null && typeof exercise.suggestedWeight === 'number' && typeof exercise.previousWeight === 'number') && 
+                                ` (${exercise.suggestedWeight >= exercise.previousWeight ? '+' : ''}${(exercise.suggestedWeight - exercise.previousWeight).toFixed(1)}${exercise.suggestedWeightUnit})`
+                              }
+                            </Text>
+                          )}
+                          
+                          {/* Pain Warning - Only show for non-completed exercises */}
+                          {!isCompleted && exercise.painReportedLastTime && (
+                            <View style={styles.painWarningContainer}>
+                              <Ionicons name="warning-outline" size={16} color="#FFA500" />
+                              <Text style={styles.painWarningText}>
+                                Pain reported last time. Consider swapping this exercise.
+                              </Text>
+                              <TouchableOpacity 
+                                style={styles.swapSuggestionButton}
+                                onPress={() => handleOpenSwapModal(exercise, dayIndex)}
+                              >
+                                <Text style={styles.swapSuggestionButtonText}>Swap</Text>
+                              </TouchableOpacity>
+                            </View>
+                          )}
 
-                           {/* Notes & Cues */}
-                           {exercise.notes && (
-                             <Text style={styles.notes}>{exercise.notes}</Text>
-                           )}
-                           {exercise.cues && exercise.cues.length > 0 && (
-                             <View style={styles.cuesSection}>
-                               <Text style={styles.subTitle}>Form Cues:</Text>
-                               {exercise.cues.map((cue, cueIndex) => (
-                                 <Text key={cueIndex} style={styles.listItem}>• {cue}</Text>
-                               ))}
-                             </View>
-                           )}
-                         </View>
-                       );
-                      })}
+                          {/* Notes & Cues */}
+                          {exercise.notes && (
+                            <Text style={styles.notes}>{exercise.notes}</Text>
+                          )}
+                          {exercise.cues && exercise.cues.length > 0 && (
+                            <View style={styles.cuesSection}>
+                              <Text style={styles.subTitle}>Form Cues:</Text>
+                              {exercise.cues.map((cue, cueIndex) => (
+                                <Text key={cueIndex} style={styles.listItem}>• {cue}</Text>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })}
                   </View>
                 )}
 
@@ -1081,6 +1348,23 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     color: '#ff3b30',
     textAlign: 'center',
+  },
+  completedExerciseRow: {
+    backgroundColor: '#f0f9f0', // Light green background
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+    opacity: 0.9,
+  },
+  completedIndicator: {
+    padding: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  completedText: {
+    color: '#4CAF50',
+    fontWeight: 'bold',
+    marginLeft: 5,
+    fontSize: 14,
   },
 });
 

@@ -12,11 +12,10 @@ import {
   Animated,
   Alert,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';  // Added RouteProp
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';  // Added useFocusEffect
 import { planService } from '../services/planService';
 import { progressService } from '../services/progressService'; // Import progress service
 import { DayPlan, Meal, Exercise } from '../types/plan.types'; // Add Exercise type
-import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, BottomTabParamList } from '../types/navigation.types';
 import { Ionicons } from '@expo/vector-icons';
@@ -626,6 +625,16 @@ const HomeScreen = () => {
   // --- NEW HANDLERS for Exercise Modals ---
 
   const handleOpenCompletionModal = (exercise: EnhancedExercise) => {
+    // Find the exercise index
+    const exerciseIndex = todaysPlan?.workout?.exercises.findIndex(ex => ex.name === exercise.name);
+    
+    // Guard clause - don't open modal for completed exercises
+    if (exerciseIndex !== undefined && exerciseIndex !== -1 && completedExerciseIndices.includes(exerciseIndex)) {
+      showToast(`${exercise.name} already completed today`);
+      return;
+    }
+    
+    // Continue with normal flow
     setSelectedExercise(exercise);
     setCompletionModalVisible(true);
   };
@@ -641,17 +650,9 @@ const HomeScreen = () => {
     // Check if this exercise is already completed today
     const exerciseIndex = todaysPlan?.workout?.exercises.findIndex(ex => ex.name === selectedExercise.name);
     if (exerciseIndex !== undefined && exerciseIndex !== -1 && completedExerciseIndices.includes(exerciseIndex)) {
-      Alert.alert(
-        "Already Completed", 
-        `You've already logged ${selectedExercise.name} today! Want to log it again?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          { 
-            text: "Log Again", 
-            onPress: () => submitExerciseLog(logData)
-          }
-        ]
-      );
+      // Instead of allowing multiple logging, simply show a message
+      showToast(`${selectedExercise.name} is already completed today`);
+      handleCloseCompletionModal();
       return;
     }
     
@@ -694,6 +695,11 @@ const HomeScreen = () => {
             
             return newCompletedIndices;
           });
+          
+          // Store the completed exercise in AsyncStorage for cross-screen persistence
+          const dateKey = dateString.split('T')[0]; // Get YYYY-MM-DD format
+          const completedExerciseKey = `completed_exercise_${selectedExercise.name}_${dateKey}`;
+          await AsyncStorage.setItem(completedExerciseKey, 'true');
         }
       }
 
@@ -756,6 +762,80 @@ const HomeScreen = () => {
       Alert.alert("Swap Error", error instanceof Error ? error.message : "Could not swap exercise.");
     }
   };
+
+  // Add a function to load completed exercises from AsyncStorage
+  const loadCompletedExercises = async () => {
+    try {
+      if (!todaysPlan?.workout) return;
+      
+      // Get today's date in YYYY-MM-DD format
+      const today = todaysPlan.date.toISOString().split('T')[0];
+      
+      // Get all AsyncStorage keys
+      const keys = await AsyncStorage.getAllKeys();
+      
+      // Filter for keys that match the format for today's completed exercises
+      const todaysCompletedKeys = keys.filter(key => 
+        key.startsWith('completed_exercise_') && key.endsWith(`_${today}`)
+      );
+      
+      if (todaysCompletedKeys.length === 0) return;
+      
+      // Get values for all completed exercise keys
+      const completedData = await AsyncStorage.multiGet(todaysCompletedKeys);
+      
+      // Extract exercise names from the keys
+      const completedExerciseNames = completedData
+        .filter(([, value]) => value === 'true')
+        .map(([key]) => {
+          // Extract exercise name from key format: completed_exercise_ExerciseName_YYYY-MM-DD
+          const parts = key.split('_');
+          // Remove 'completed', 'exercise', and date parts, keep the exercise name
+          return parts.slice(2, -1).join('_'); // Rejoin in case exercise name has underscores
+        });
+      
+      if (completedExerciseNames.length === 0) return;
+      
+      // Find indices of completed exercises in today's plan
+      const newCompletedIndices: number[] = [];
+      
+      todaysPlan.workout.exercises.forEach((exercise, index) => {
+        if (completedExerciseNames.includes(exercise.name)) {
+          newCompletedIndices.push(index);
+        }
+      });
+      
+      if (newCompletedIndices.length > 0) {
+        setCompletedExerciseIndices(newCompletedIndices);
+        console.log(`Loaded ${newCompletedIndices.length} completed exercises from AsyncStorage`);
+      }
+    } catch (error) {
+      console.error('Error loading completed exercises:', error);
+    }
+  };
+  
+  // Add an effect to check for updates when the screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      const checkForUpdates = async () => {
+        const exerciseDataUpdated = await AsyncStorage.getItem('exerciseDataUpdated');
+        if (exerciseDataUpdated === 'true') {
+          console.log('Exercise data updated in another screen, refreshing...');
+          await loadCompletedExercises();
+          await AsyncStorage.removeItem('exerciseDataUpdated');
+        }
+      };
+      
+      checkForUpdates();
+    }, [todaysPlan])
+  );
+  
+  // Also load completed exercises when the plan is fetched
+  useEffect(() => {
+    if (todaysPlan) {
+      loadCompletedExercises();
+    }
+  }, [todaysPlan?.date]);
 
   if (loading) {
     return (
@@ -997,7 +1077,7 @@ const HomeScreen = () => {
                   key={index}
                   style={[
                     styles.exerciseRow,
-                    completedExerciseIndices.includes(index) && styles.completedExerciseRow
+                    isCompleted && styles.completedExerciseRow
                   ]}
                 >
                   <View style={styles.exerciseContent}>
@@ -1008,29 +1088,39 @@ const HomeScreen = () => {
                         {exercise.isSwapped && <Text style={styles.swappedText}> (Swapped)</Text>}
                       </Text>
                       <View style={styles.exerciseActions}>
-                        <TouchableOpacity onPress={() => handleOpenSwapModal(exercise)} style={styles.iconButton}>
-                          <Ionicons name="swap-horizontal-outline" size={24} color="#FF0000" />
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          onPress={() => {
-                            setSelectedExercise(exercise);
-                            setCompletionModalVisible(true);
-                          }} 
-                          style={styles.iconButton}
-                        >
-                          <Ionicons 
-                            name={isCompleted ? "checkmark-circle" : "checkmark-circle-outline"} 
-                            size={28} 
-                            color={isCompleted ? "#4CAF50" : "#ccc"} 
-                          />
-                        </TouchableOpacity>
+                        {isCompleted ? (
+                          // For completed exercises, show a non-interactive completed indicator
+                          <View style={styles.completedIndicator}>
+                            <Ionicons name="checkmark-circle" size={28} color="#4CAF50" />
+                            <Text style={styles.completedText}>Completed</Text>
+                          </View>
+                        ) : (
+                          // For incomplete exercises, show the interactive buttons
+                          <>
+                            <TouchableOpacity onPress={() => handleOpenSwapModal(exercise)} style={styles.iconButton}>
+                              <Ionicons name="swap-horizontal-outline" size={24} color="#FF0000" />
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                              onPress={() => handleOpenCompletionModal(exercise)} 
+                              style={styles.iconButton}
+                            >
+                              <Ionicons 
+                                name="checkmark-circle-outline" 
+                                size={28} 
+                                color="#ccc" 
+                              />
+                            </TouchableOpacity>
+                          </>
+                        )}
                       </View>
                     </View>
 
                     <Text style={styles.exerciseSets}>
                       {exercise.sets} × {exercise.reps}
                     </Text>
-                    {exercise.suggestedWeight !== null && (
+                    
+                    {/* Only show suggested weight for non-completed exercises */}
+                    {!isCompleted && exercise.suggestedWeight !== null && (
                       <Text style={styles.suggestionText}>
                         Suggest: {exercise.suggestedWeight}{exercise.suggestedWeightUnit}
                         {exercise.previousWeight !== null && typeof exercise.suggestedWeight === 'number' && typeof exercise.previousWeight === 'number' && 
@@ -1038,7 +1128,7 @@ const HomeScreen = () => {
                       </Text>
                     )}
                     
-                    {exercise.painReportedLastTime && (
+                    {exercise.painReportedLastTime && !isCompleted && (
                       <View style={styles.painWarningContainer}>
                         <Ionicons name="warning-outline" size={16} color="#FFA500" />
                         <Text style={styles.painWarningText}>
@@ -1505,8 +1595,10 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   completedExerciseRow: {
+    backgroundColor: '#f0f9f0', // Light green background
+    borderLeftWidth: 4,
     borderLeftColor: '#4CAF50',
-    backgroundColor: '#f9fff9',
+    opacity: 0.9,
   },
   exerciseContent: {
     flex: 1,
@@ -1515,6 +1607,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginBottom: 4,
+  },
+  completedIndicator: {
+    padding: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  completedText: {
+    color: '#4CAF50',
+    fontWeight: 'bold',
+    marginLeft: 5,
+    fontSize: 14,
   },
 });
 
